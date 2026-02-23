@@ -2,11 +2,11 @@
   "name": "Maza3eat-arab",
   "version": "1.0.0",
   "description": "A social media traveling blog platform using Node.js/typescript, Express, and MongoDB.",
-  "main": "index.js",
+  "main": "dist/index.js",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon --watch src --exec node --loader ts-node/esm src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js"
   },
@@ -18,7 +18,7 @@
   "author": "Ali Magdy",
   "license": "MIT",
   "dependencies": {
-    "@prisma/client": "^7.4.1",
+    "@prisma/client": "^6.19.2",
     "cors": "^2.8.6",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
@@ -34,9 +34,8 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.1.0",
     "@types/sanitize-html": "^2.16.0",
-    "nodemon": "^3.1.10",
-    "prisma": "^7.4.1",
-    "ts-node": "^10.9.2",
+    "prisma": "^6.19.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.3"
   }
 }

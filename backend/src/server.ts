@@ -12,7 +12,6 @@ import { PrismaClient } from "@prisma/client";
 const app: Application = express();
 const server = http.createServer(app);
 const prisma = new PrismaClient();
-
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
@@ -60,25 +59,25 @@ app.get("/health", async (_req: Request, res: Response) => {
 // API Routes
 // -----------------------------
 
-import authRoutes from "./modules/auth/routes";
-import postRoutes from "./modules/posts/routes";
-import questionRoutes from "./modules/questions/routes";
-import userRoutes from "./modules/users/routes";
-import reportRoutes from "./modules/reports/routes";
-import contactRoutes from "./modules/contact/routes";
-import notificationRoutes from "./modules/notifications/routes";
-import adRoutes from "./modules/ads/routes";
-import adminRoutes from "./modules/admin/routes";
+// import authRoutes from "./modules/auth/routes";
+// import postRoutes from "./modules/posts/routes";
+// import questionRoutes from "./modules/questions/routes";
+// import userRoutes from "./modules/users/routes";
+// import reportRoutes from "./modules/reports/routes";
+// import contactRoutes from "./modules/contact/routes";
+// import notificationRoutes from "./modules/notifications/routes";
+// import adRoutes from "./modules/ads/routes";
+// import adminRoutes from "./modules/admin/routes";
 
-app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/posts", postRoutes);
-app.use("/api/v1/questions", questionRoutes);
-app.use("/api/v1/users", userRoutes);
-app.use("/api/v1/reports", reportRoutes);
-app.use("/api/v1/contact-requests", contactRoutes);
-app.use("/api/v1/notifications", notificationRoutes);
-app.use("/api/v1/ads", adRoutes);
-app.use("/api/v1/admin", adminRoutes);
+// app.use("/api/v1/auth", authRoutes);
+// app.use("/api/v1/posts", postRoutes);
+// app.use("/api/v1/questions", questionRoutes);
+// app.use("/api/v1/users", userRoutes);
+// app.use("/api/v1/reports", reportRoutes);
+// app.use("/api/v1/contact-requests", contactRoutes);
+// app.use("/api/v1/notifications", notificationRoutes);
+// app.use("/api/v1/ads", adRoutes);
+// app.use("/api/v1/admin", adminRoutes);
 
 // -----------------------------
 // 404 Handler
