@@ -2,4 +2,4 @@
 "use strict";
 import dotenv from "dotenv";
 dotenv.config();
-import "./server.ts";
+import "./server.js";

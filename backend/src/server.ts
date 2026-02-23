@@ -1,19 +1,19 @@
-import express, { Application, Request, Response, NextFunction } from "express";
-import http from "http";
-import cors from "cors";
-import morgan from "morgan";
-import helmet from "helmet";
-import { PrismaClient } from "@prisma/client";
+import express, { Application, Request, Response, NextFunction } from 'express';
+import http from 'http';
+import cors from 'cors';
+import morgan from 'morgan';
+import helmet from 'helmet';
+import { PrismaClient } from '@prisma/client';
 
 // -----------------------------
 // Initialize
 // -----------------------------
 
 const app: Application = express();
-const server = http.createServer(app);
-const prisma = new PrismaClient();
-const PORT = process.env.PORT || 3000;
-const NODE_ENV = process.env.NODE_ENV || "development";
+const server: http.Server = http.createServer(app);
+const prisma: PrismaClient = new PrismaClient();
+const PORT: number = Number(process.env.PORT || '3000');
+const NODE_ENV: string = process.env.NODE_ENV || 'development';
 
 // -----------------------------
 // Global Middlewares
@@ -22,44 +22,44 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 app.use(helmet());
 
 app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "*",
-    credentials: true,
-  }),
+    cors({
+        origin: process.env.CLIENT_URL || '*',
+        credentials: true,
+    }),
 );
 
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-if (NODE_ENV === "development") {
-  app.use(morgan("dev"));
+if (NODE_ENV === 'development') {
+    app.use(morgan('dev'));
 }
 
 // -----------------------------
 // Health Check
 // -----------------------------
 
-app.get("/health", async (_req: Request, res: Response) => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    res.status(200).json({
-      status: "ok",
-      database: "connected",
-      timestamp: new Date(),
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: "error",
-      database: "disconnected",
-    });
-  }
+app.get('/health', async (_req: Request, res: Response) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.status(200).json({
+            status: 'ok',
+            database: 'connected',
+            timestamp: new Date(),
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            database: 'disconnected',
+        });
+    }
 });
 
 // -----------------------------
 // API Routes
 // -----------------------------
 
-// import authRoutes from "./modules/auth/routes";
+import authRoutes from './modules/auth/routes.js';
 // import postRoutes from "./modules/posts/routes";
 // import questionRoutes from "./modules/questions/routes";
 // import userRoutes from "./modules/users/routes";
@@ -69,7 +69,7 @@ app.get("/health", async (_req: Request, res: Response) => {
 // import adRoutes from "./modules/ads/routes";
 // import adminRoutes from "./modules/admin/routes";
 
-// app.use("/api/v1/auth", authRoutes);
+// app.use('/api/v1/auth', authRoutes);
 // app.use("/api/v1/posts", postRoutes);
 // app.use("/api/v1/questions", questionRoutes);
 // app.use("/api/v1/users", userRoutes);
@@ -84,10 +84,10 @@ app.get("/health", async (_req: Request, res: Response) => {
 // -----------------------------
 
 app.use((req: Request, res: Response) => {
-  res.status(404).json({
-    success: false,
-    message: `Route not found: ${req.originalUrl}`,
-  });
+    res.status(404).json({
+        success: false,
+        message: `Route not found: ${req.originalUrl}`,
+    });
 });
 
 // -----------------------------
@@ -95,12 +95,13 @@ app.use((req: Request, res: Response) => {
 // -----------------------------
 
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error("🔥 Global Error:", err);
+    console.error('🔥 Global Error:', err);
 
-  res.status(err.status || 500).json({
-    success: false,
-    message: NODE_ENV === "development" ? err.message : "Internal Server Error",
-  });
+    res.status(err.status || 500).json({
+        success: false,
+        message:
+            NODE_ENV === 'development' ? err.message : 'Internal Server Error',
+    });
 });
 
 // -----------------------------
@@ -108,19 +109,19 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 // -----------------------------
 
 async function startServer() {
-  try {
-    await prisma.$connect();
-    console.log("✅ Database connected");
+    try {
+        await prisma.$connect();
+        console.log('✅ Database connected');
 
-    server.listen(PORT, () => {
-      console.log(
-        `🚀 Server running on http://localhost:${PORT} (${NODE_ENV})`,
-      );
-    });
-  } catch (error) {
-    console.error("❌ Failed to connect to database", error);
-    process.exit(1);
-  }
+        server.listen(PORT, () => {
+            console.log(
+                `🚀 Server running on http://localhost:${PORT} (${NODE_ENV})`,
+            );
+        });
+    } catch (error) {
+        console.error('❌ Failed to connect to database', error);
+        process.exit(1);
+    }
 }
 
 startServer();
@@ -129,14 +130,14 @@ startServer();
 // Graceful Shutdown
 // -----------------------------
 
-process.on("SIGINT", async () => {
-  console.log("🛑 SIGINT received. Shutting down...");
-  await prisma.$disconnect();
-  process.exit(0);
+process.on('SIGINT', async () => {
+    console.log('🛑 SIGINT received. Shutting down...');
+    await prisma.$disconnect();
+    process.exit(0);
 });
 
-process.on("SIGTERM", async () => {
-  console.log("🛑 SIGTERM received. Shutting down...");
-  await prisma.$disconnect();
-  process.exit(0);
+process.on('SIGTERM', async () => {
+    console.log('🛑 SIGTERM received. Shutting down...');
+    await prisma.$disconnect();
+    process.exit(0);
 });
