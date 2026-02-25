@@ -1,7 +1,9 @@
-Excellent 👌
-Now we design this like a **real production backend**, not a small student API.
+For production (different domains):
 
-You prefer `/api/` prefix — so we’ll structure it cleanly and professionally.
+secure: true,
+sameSite: 'none'
+
+⚠️ sameSite: 'none' REQUIRES secure: true
 
 ---
 

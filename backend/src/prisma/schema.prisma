@@ -1,0 +1,399 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//////////////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////////////
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum ContentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+enum ReportTargetType {
+  POST
+  COMMENT
+  QUESTION
+  ANSWER
+}
+
+enum NotificationType {
+  ADMIN
+  CONTACT
+  COMMENT
+  LIKE
+  ANSWER
+  REPORT
+}
+
+enum ContactRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+//////////////////////////////////////////////////////
+// MODELS
+//////////////////////////////////////////////////////
+
+model User {
+  id       String   @id @default(uuid())
+  googleId String   @unique
+  name     String
+  email    String   @unique
+  avatar   String?
+  role     UserRole @default(USER)
+
+  tierId Int?
+  tier   Tier? @relation(fields: [tierId], references: [id])
+
+  isBanned  Boolean @default(false)
+  isDeleted Boolean @default(false)
+
+  posts       Post[]
+  comments    Comment[]
+  postLikes   PostLike[]
+  questions   Question[]
+  answers     Answer[]
+  answerVotes AnswerVote[]
+
+  sentContactRequests     ContactRequest[] @relation("SentRequests")
+  receivedContactRequests ContactRequest[] @relation("ReceivedRequests")
+
+  notifications   Notification[]
+  reports         Report[]       @relation("UserReports")
+  reviewedReports Report[]       @relation("AdminReviewedReports")
+
+  auditLogs AuditLog[]
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  refreshToken RefreshToken[]
+
+  @@index([role])
+  @@index([isDeleted, isBanned])
+  @@index([tierId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////
+
+model Tier {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  badgeColor  String
+  description String?
+
+  users User[]
+
+  createdAt DateTime @default(now())
+}
+
+//////////////////////////////////////////////////////
+// POSTS SECTION
+//////////////////////////////////////////////////////
+
+model Post {
+  id       String @id @default(uuid())
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  title     String
+  content   String
+  countryId Int
+  country   Country @relation(fields: [countryId], references: [id])
+  city      String
+
+  status          ContentStatus @default(PENDING)
+  rejectionReason String?
+
+  isDeleted Boolean @default(false)
+
+  images   PostImage[]
+  comments Comment[]
+  likes    PostLike[]
+  reports  Report[]
+
+  ads PostAd[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([authorId])
+}
+
+model PostImage {
+  id     String @id @default(uuid())
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  imageUrl String
+
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+}
+
+model Comment {
+  id     String @id @default(uuid())
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  content   String
+  isDeleted Boolean @default(false)
+
+  reports Report[]
+
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+  @@index([authorId])
+}
+
+model PostLike {
+  userId String
+  postId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, postId])
+}
+
+//////////////////////////////////////////////////////
+// Q&A SECTION
+//////////////////////////////////////////////////////
+
+model Question {
+  id       String @id @default(uuid())
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  title     String
+  content   String
+  countryId Int
+  country   Country @relation(fields: [countryId], references: [id])
+
+  status          ContentStatus @default(PENDING)
+  rejectionReason String?
+  isDeleted       Boolean       @default(false)
+
+  answers Answer[]
+  reports Report[]
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([authorId])
+}
+
+model Answer {
+  id         String   @id @default(uuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  content   String
+  isDeleted Boolean @default(false)
+
+  votes   AnswerVote[]
+  reports Report[]
+
+  createdAt DateTime @default(now())
+
+  @@index([questionId])
+  @@index([authorId])
+}
+
+model AnswerVote {
+  userId   String
+  answerId String
+  value    Int // 1 or -1
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answer Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, answerId])
+}
+
+//////////////////////////////////////////////////////
+// REPORT SYSTEM
+//////////////////////////////////////////////////////
+
+model Report {
+  id String @id @default(uuid())
+
+  reporterId String
+  reporter   User   @relation("UserReports", fields: [reporterId], references: [id])
+
+  targetType ReportTargetType
+  targetId   String
+
+  reason String
+
+  status ReportStatus @default(PENDING)
+
+  reviewedById String?
+  reviewedBy   User?   @relation("AdminReviewedReports", fields: [reviewedById], references: [id])
+
+  postId     String?
+  commentId  String?
+  questionId String?
+  answerId   String?
+
+  post     Post?     @relation(fields: [postId], references: [id])
+  comment  Comment?  @relation(fields: [commentId], references: [id])
+  question Question? @relation(fields: [questionId], references: [id])
+  answer   Answer?   @relation(fields: [answerId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([targetType])
+}
+
+//////////////////////////////////////////////////////
+// CONTACT SYSTEM
+//////////////////////////////////////////////////////
+
+model ContactRequest {
+  id String @id @default(uuid())
+
+  requesterId String
+  requester   User   @relation("SentRequests", fields: [requesterId], references: [id])
+
+  receiverId String
+  receiver   User   @relation("ReceivedRequests", fields: [receiverId], references: [id])
+
+  status ContactRequestStatus @default(PENDING)
+
+  sharedEmail     String?
+  sharedPhone     String?
+  sharedFacebook  String?
+  sharedInstagram String?
+
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  @@index([receiverId])
+  @@index([requesterId])
+}
+
+//////////////////////////////////////////////////////
+// NOTIFICATIONS
+//////////////////////////////////////////////////////
+
+model Notification {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    NotificationType
+  title   String
+  message String
+  isRead  Boolean          @default(false)
+
+  relatedEntityType String?
+  relatedEntityId   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+}
+
+//////////////////////////////////////////////////////
+// ADS
+//////////////////////////////////////////////////////
+
+model Ad {
+  id       String  @id @default(uuid())
+  title    String
+  imageUrl String
+  link     String
+  isActive Boolean @default(true)
+
+  posts PostAd[]
+
+  createdAt DateTime @default(now())
+}
+
+model PostAd {
+  postId String
+  adId   String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  ad   Ad   @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@id([postId, adId])
+}
+
+//////////////////////////////////////////////////////
+// COUNTRY
+//////////////////////////////////////////////////////
+
+model Country {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  code String @unique
+
+  posts     Post[]
+  questions Question[]
+}
+
+//////////////////////////////////////////////////////
+// AUDIT LOG (ADMIN ACTIONS)
+//////////////////////////////////////////////////////
+
+model AuditLog {
+  id      String @id @default(uuid())
+  adminId String
+  admin   User   @relation(fields: [adminId], references: [id])
+
+  action     String
+  entityType String
+  entityId   String
+
+  createdAt DateTime @default(now())
+
+  @@index([adminId])
+}

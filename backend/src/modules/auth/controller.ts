@@ -1,44 +1,66 @@
 import { google } from 'googleapis';
-import { AuthThirdPartyService } from './service.js';
+import { randomBytes } from 'crypto';
+import AuthThirdPartyService from './service.js';
+import { Request, Response } from 'express';
+
 class GoogleAuthController extends AuthThirdPartyService {
+    private oauth2Client: any;
     constructor() {
         super();
         this.oauth2Client = new google.auth.OAuth2(
-            process.env.CLIENT_ID,
-            process.env.CLIENT_SECRET,
-            'http://' +
-                process.env.HOST +
-                ':' +
-                process.env.PORT +
-                process.env.CALLBACK_URL,
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            process.env.GOOGLE_REDIRECT_URI,
         );
     }
 
-    getAuthUrl = async (req: Request, res: Response) => {
+     getAuthUrl = async (req: Request, res: Response) => {
         try {
+            const state = randomBytes(32).toString('hex');
             const url: string = this.oauth2Client.generateAuthUrl({
                 access_type: 'offline',
-                prompt: 'consent',
-                scope: ['profile', 'email'],
+                scope: ['profile', 'email', 'openid'],
+                state,
             });
+
+            res.cookie('oauth_state', state, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite:
+                    process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                maxAge: 5 * 60 * 1000,
+            });
+
             return res.status(200).json({ status: 'success', data: { url } });
         } catch (err) {
             console.error(err);
-            return res
-                .status(500)
-                .json({
-                    status: 'error',
-                    message: 'Failed to generate auth URL',
-                });
+            return res.status(500).json({
+                status: 'error',
+                message: 'Failed to generate auth URL',
+            });
         }
-    };
+    }
 
-    handleCallback = async (req: Request, res: Response) => {
+     handleCallback = async (req: Request, res: Response) => {
         const code: string = req.query.code as string;
-        if (!code)
-            return res
-                .status(400)
-                .json({ status: 'fail', message: 'Missing code parameter' });
+        const state: string = req.query.state as string;
+        const storedState: string = req.cookies.oauth_state;
+
+        if (!code || !state) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'Missing code or state',
+            });
+        }
+
+        if (!storedState || state !== storedState) {
+            return res.status(403).json({
+                status: 'fail',
+                message: 'Invalid OAuth state',
+            });
+        }
+
+        res.clearCookie('oauth_state');
 
         try {
             const { tokens } = await this.oauth2Client.getToken(code);
@@ -54,34 +76,62 @@ class GoogleAuthController extends AuthThirdPartyService {
                 audience: process.env.GOOGLE_CLIENT_ID,
             });
 
-            const { email, name, sub: googleId } = ticket.getPayload();
+            const {
+                email,
+                email_verified,
+                name,
+                sub: googleId,
+                picture: avatar,
+            } = ticket.getPayload();
 
-            const user = await this.createOrFetchUser(
+            if (!email_verified) {
+                return res.status(400).json({
+                    status: 'fail',
+                    message: 'Email is not verified',
+                });
+            }
+
+            const user = await super.findOrCreateUser(
                 email,
                 name,
+                avatar,
                 googleId,
             );
             if (!user) {
                 return res.status(500).json({
-                    status: 'fail',
+                    status: 'error',
                     message: 'Failed to create or fetch user',
                 });
             }
 
-            const result = await this.generateJwt(user);
-            if (result.status === 'fail')
+            const result = super.generateJwt(user);
+            if (!result.data.accessToken || !result.data.refreshToken)
                 return res.status(400).json({
                     status: 'fail',
-                    message: result.data?.message || 'Failed to generate JWT',
+                    message: 'Failed to generate JWT',
                 });
 
-            const accessToken = result.data.accessToken?.token;
-            const refreshToken = result.data.refreshToken;
-            const expiresIn = result.data.accessToken?.expiresIn;
+            const { accessToken, refreshToken } = result.data;
 
-            const redirectUrl = `${process.env.GOOGLE_REDIRECT_URL}?token=${encodeURIComponent(accessToken)}&expiresIn=${encodeURIComponent(expiresIn)}&refreshToken=${encodeURIComponent(refreshToken)}`;
+            await super.storeRefreshToken(user.id, refreshToken);
 
-            return res.redirect(redirectUrl);
+            res.cookie('accessToken', accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite:
+                    process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                maxAge: Number(process.env.ACCESS_TOKEN_MAX_AGE) * 1000,
+            });
+
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite:
+                    process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                maxAge: Number(process.env.REFRESH_TOKEN_MAX_AGE) * 1000,
+            });
+
+            return res.redirect(process.env.FRONTEND_URL!);
         } catch (error) {
             console.error(error);
             return res.status(500).json({
@@ -89,7 +139,7 @@ class GoogleAuthController extends AuthThirdPartyService {
                 message: 'Authentication failed',
             });
         }
-    };
+    }
 }
 
-export const googleAuthController = new GoogleAuthController();
+export default new GoogleAuthController();

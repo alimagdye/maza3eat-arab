@@ -3,15 +3,14 @@ import http from 'http';
 import cors from 'cors';
 import morgan from 'morgan';
 import helmet from 'helmet';
-import { PrismaClient } from '@prisma/client';
-
+import cookieParser from 'cookie-parser';
+import { prisma } from './prisma/client.js';
 // -----------------------------
 // Initialize
 // -----------------------------
 
 const app: Application = express();
 const server: http.Server = http.createServer(app);
-const prisma: PrismaClient = new PrismaClient();
 const PORT: number = Number(process.env.PORT || '3000');
 const NODE_ENV: string = process.env.NODE_ENV || 'development';
 
@@ -21,16 +20,16 @@ const NODE_ENV: string = process.env.NODE_ENV || 'development';
 
 app.use(helmet());
 
+app.use(cookieParser());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
 app.use(
     cors({
         origin: process.env.CLIENT_URL || '*',
         credentials: true,
     }),
 );
-
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
 if (NODE_ENV === 'development') {
     app.use(morgan('dev'));
 }
@@ -69,7 +68,7 @@ import authRoutes from './modules/auth/routes.js';
 // import adRoutes from "./modules/ads/routes";
 // import adminRoutes from "./modules/admin/routes";
 
-// app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/auth', authRoutes);
 // app.use("/api/v1/posts", postRoutes);
 // app.use("/api/v1/questions", questionRoutes);
 // app.use("/api/v1/users", userRoutes);
@@ -85,7 +84,7 @@ import authRoutes from './modules/auth/routes.js';
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({
-        success: false,
+        status: 'fail',
         message: `Route not found: ${req.originalUrl}`,
     });
 });
@@ -98,7 +97,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     console.error('🔥 Global Error:', err);
 
     res.status(err.status || 500).json({
-        success: false,
+        status: 'error',
         message:
             NODE_ENV === 'development' ? err.message : 'Internal Server Error',
     });
