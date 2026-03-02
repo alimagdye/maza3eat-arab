@@ -1,12 +1,13 @@
+// src/modules/auth/controller.ts
 import { google } from 'googleapis';
 import { randomBytes } from 'crypto';
-import AuthThirdPartyService from './service.js';
+import AuthService from './service.js';
 import { Request, Response } from 'express';
 
-class GoogleAuthController extends AuthThirdPartyService {
+class GoogleAuthController {
     private oauth2Client: any;
+    private authService = new AuthService();
     constructor() {
-        super();
         this.oauth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
             process.env.GOOGLE_CLIENT_SECRET,
@@ -14,7 +15,7 @@ class GoogleAuthController extends AuthThirdPartyService {
         );
     }
 
-     getAuthUrl = async (req: Request, res: Response) => {
+    getAuthUrl = async (req: Request, res: Response) => {
         try {
             const state = randomBytes(32).toString('hex');
             const url: string = this.oauth2Client.generateAuthUrl({
@@ -39,9 +40,9 @@ class GoogleAuthController extends AuthThirdPartyService {
                 message: 'Failed to generate auth URL',
             });
         }
-    }
+    };
 
-     handleCallback = async (req: Request, res: Response) => {
+    handleCallback = async (req: Request, res: Response) => {
         const code: string = req.query.code as string;
         const state: string = req.query.state as string;
         const storedState: string = req.cookies.oauth_state;
@@ -91,7 +92,7 @@ class GoogleAuthController extends AuthThirdPartyService {
                 });
             }
 
-            const user = await super.findOrCreateUser(
+            const user = await this.authService.findOrCreateUser(
                 email,
                 name,
                 avatar,
@@ -104,7 +105,7 @@ class GoogleAuthController extends AuthThirdPartyService {
                 });
             }
 
-            const result = super.generateJwt(user);
+            const result = this.authService.generateJwt(user);
             if (!result.data.accessToken || !result.data.refreshToken)
                 return res.status(400).json({
                     status: 'fail',
@@ -113,7 +114,7 @@ class GoogleAuthController extends AuthThirdPartyService {
 
             const { accessToken, refreshToken } = result.data;
 
-            await super.storeRefreshToken(user.id, refreshToken);
+            await this.authService.storeRefreshToken(user.id, refreshToken);
 
             res.cookie('accessToken', accessToken, {
                 httpOnly: true,
@@ -139,7 +140,7 @@ class GoogleAuthController extends AuthThirdPartyService {
                 message: 'Authentication failed',
             });
         }
-    }
+    };
 }
 
 export default new GoogleAuthController();

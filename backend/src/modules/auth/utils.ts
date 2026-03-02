@@ -1,4 +1,4 @@
-import jwt, { SignOptions } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 class AuthUtils {
     generateAccessToken(user: any) {
         const token = jwt.sign(
