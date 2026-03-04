@@ -1,4 +1,3 @@
-// src/modules/auth/controller.ts
 import { google } from 'googleapis';
 import { randomBytes } from 'crypto';
 import AuthService from './service.js';
@@ -6,7 +5,7 @@ import { Request, Response } from 'express';
 
 class GoogleAuthController {
     private oauth2Client: any;
-    private authService = new AuthService();
+    private authService = AuthService;
     constructor() {
         this.oauth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import AuthService from './service.js';
 
 class AuthController {
-    private authService = new AuthService();
+    private authService = AuthService;
 
     me = async (req: any, res: Response) => {
         const user = await this.authService.getUserById(req.user.sub);
@@ -18,14 +18,7 @@ class AuthController {
         if (!refreshToken)
             return res.status(400).json({ message: 'No refresh token' });
 
-        const deleted = await this.authService.deleteRefreshToken(refreshToken);
-        // handle wrong token or already deleted token
-        if (!deleted) {
-            return res.status(400).json({
-                status: 'fail',
-                message: 'Failed to delete refresh token',
-            });
-        }
+        await this.authService.deleteRefreshToken(refreshToken);
 
         res.clearCookie('accessToken');
         res.clearCookie('refreshToken');
