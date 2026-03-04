@@ -29,9 +29,8 @@ enum ReportStatus {
 }
 
 enum ReportTargetType {
-  POST
   COMMENT
-  QUESTION
+  REPLY
   ANSWER
 }
 
@@ -65,12 +64,12 @@ model User {
   tierId Int?
   tier   Tier? @relation(fields: [tierId], references: [id])
 
-  isBanned  Boolean @default(false)
-  isDeleted Boolean @default(false)
-
   posts       Post[]
   comments    Comment[]
+  replies     Reply[]
   postLikes   PostLike[]
+  commentLikes CommentLike[]
+  replyLikes   ReplyLike[]
   questions   Question[]
   answers     Answer[]
   answerVotes AnswerVote[]
@@ -89,7 +88,6 @@ model User {
   refreshToken RefreshToken[]
 
   @@index([role])
-  @@index([isDeleted, isBanned])
   @@index([tierId])
 }
 
@@ -129,27 +127,31 @@ model Post {
 
   title     String
   content   String
-  countryId Int
-  country   Country @relation(fields: [countryId], references: [id])
-  city      String
 
   status          ContentStatus @default(PENDING)
   rejectionReason String?
 
-  isDeleted Boolean @default(false)
-
   images   PostImage[]
   comments Comment[]
+  tags     PostTag[]
   likes    PostLike[]
-  reports  Report[]
-
-  ads PostAd[]
+  likesCount Int @default(0)
+  commentsCount Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([authorId])
+}
+
+model PostTag {
+  postId String
+  name   String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([postId, name])
 }
 
 model PostImage {
@@ -173,13 +175,39 @@ model Comment {
   author   User   @relation(fields: [authorId], references: [id])
 
   content   String
-  isDeleted Boolean @default(false)
-
+  likesCount Int @default(0)
+  
+  replies Reply[]
+  likes CommentLike[]
   reports Report[]
 
   createdAt DateTime @default(now())
 
   @@index([postId])
+  @@index([authorId])
+}
+
+model Reply {
+  id        String @id @default(uuid())
+  commentId String
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+  parentReplyId String?
+  parentReply   Reply? @relation("ReplyThread", fields: [parentReplyId], references: [id])
+
+  content   String
+  likesCount Int @default(0)
+  depth Int @default(0)
+
+  replies       Reply[] @relation("ReplyThread")
+  likes ReplyLike[]
+  reports Report[]
+
+  createdAt DateTime @default(now())
+
+  @@index([commentId])
+  @@index([parentReplyId])
   @@index([authorId])
 }
 
@@ -195,6 +223,30 @@ model PostLike {
   @@id([userId, postId])
 }
 
+model CommentLike {
+  userId    String
+  commentId String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, commentId])
+}
+
+model ReplyLike {
+  userId String
+  replyId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reply Reply @relation(fields: [replyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, replyId])
+}
+
 //////////////////////////////////////////////////////
 // Q&A SECTION
 //////////////////////////////////////////////////////
@@ -206,15 +258,12 @@ model Question {
 
   title     String
   content   String
-  countryId Int
-  country   Country @relation(fields: [countryId], references: [id])
 
   status          ContentStatus @default(PENDING)
   rejectionReason String?
   isDeleted       Boolean       @default(false)
 
   answers Answer[]
-  reports Report[]
 
   createdAt DateTime @default(now())
 
@@ -279,11 +328,11 @@ model Report {
   commentId  String?
   questionId String?
   answerId   String?
+  replyId    String?
 
-  post     Post?     @relation(fields: [postId], references: [id])
   comment  Comment?  @relation(fields: [commentId], references: [id])
-  question Question? @relation(fields: [questionId], references: [id])
   answer   Answer?   @relation(fields: [answerId], references: [id])
+  reply    Reply?    @relation(fields: [replyId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -352,33 +401,10 @@ model Ad {
   link     String
   isActive Boolean @default(true)
 
-  posts PostAd[]
-
   createdAt DateTime @default(now())
 }
 
-model PostAd {
-  postId String
-  adId   String
 
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  ad   Ad   @relation(fields: [adId], references: [id], onDelete: Cascade)
-
-  @@id([postId, adId])
-}
-
-//////////////////////////////////////////////////////
-// COUNTRY
-//////////////////////////////////////////////////////
-
-model Country {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-  code String @unique
-
-  posts     Post[]
-  questions Question[]
-}
 
 //////////////////////////////////////////////////////
 // AUDIT LOG (ADMIN ACTIONS)
