@@ -3,7 +3,7 @@ import { prisma } from '../../prisma/client.js';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
-export default class AuthService {
+class AuthService {
     private MAX_SESSIONS = 5;
     async findOrCreateUser(
         email: string,
@@ -72,26 +72,37 @@ export default class AuthService {
     async deleteRefreshToken(token: string) {
         const hash = this.hashToken(token);
 
-        const deleted = await prisma.refreshToken.delete({
+        await prisma.refreshToken.deleteMany({
             where: { token: hash },
         });
-        return deleted;
     }
 
     async rotateRefreshToken(oldToken: string) {
-        const decoded = jwt.verify(
-            oldToken,
-            process.env.JWT_REFRESH_SECRET!,
-        ) as any;
+        let decoded: any;
+        try {
+            decoded = jwt.verify(
+                oldToken,
+                process.env.JWT_REFRESH_SECRET!,
+            ) as any;
+        } catch (error) {
+            throw new Error('Invalid session');
+        }
 
         const hash = this.hashToken(oldToken);
 
-        const storedToken = await prisma.refreshToken.findFirst({
+        const storedToken = await prisma.refreshToken.findUnique({
             where: { token: hash },
         });
 
         if (!storedToken) {
             throw new Error('Invalid session');
+        }
+
+        if (storedToken.expiresAt < new Date()) {
+            await prisma.refreshToken.delete({
+                where: { id: storedToken.id },
+            });
+            throw new Error('Session expired');
         }
 
         const user = await prisma.user.findUnique({
@@ -127,6 +138,7 @@ export default class AuthService {
         return {
             name: user.name,
             email: user.email,
+            avatar: user.avatar,
             role: user.role,
             tier: user.tier,
         };
@@ -136,3 +148,5 @@ export default class AuthService {
         return crypto.createHash('sha256').update(token).digest('hex');
     }
 }
+
+export default new AuthService();
