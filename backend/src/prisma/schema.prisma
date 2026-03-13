@@ -32,6 +32,7 @@ enum ReportTargetType {
   COMMENT
   REPLY
   ANSWER
+  ANSWER_REPLY
 }
 
 enum NotificationType {
@@ -72,6 +73,7 @@ model User {
   replyLikes   ReplyLike[]
   questions   Question[]
   answers     Answer[]
+  answerReplies AnswerReply[]
   answerVotes AnswerVote[]
 
   sentContactRequests     ContactRequest[] @relation("SentRequests")
@@ -126,6 +128,7 @@ model Post {
   author   User   @relation(fields: [authorId], references: [id])
 
   title     String
+  titleNormalized String
   content   String
 
   status          ContentStatus @default(PENDING)
@@ -143,15 +146,18 @@ model Post {
 
   @@index([status])
   @@index([authorId])
+  @@index([titleNormalized])
 }
 
 model PostTag {
   postId String
   name   String
+  normalizedName String
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  @@id([postId, name])
+  @@id([postId, normalizedName])
+  @@index([normalizedName])
 }
 
 model PostImage {
@@ -159,7 +165,11 @@ model PostImage {
   postId String
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  imageUrl String
+  originalName String
+  imageUrl String @unique
+  publicId String @unique
+  width    Int
+  height   Int
 
   createdAt DateTime @default(now())
 
@@ -199,6 +209,7 @@ model Reply {
   content   String
   likesCount Int @default(0)
   depth Int @default(0)
+  path String
 
   replies       Reply[] @relation("ReplyThread")
   likes ReplyLike[]
@@ -257,6 +268,7 @@ model Question {
   author   User   @relation(fields: [authorId], references: [id])
 
   title     String
+  titleNormalized String
   content   String
 
   status          ContentStatus @default(PENDING)
@@ -283,11 +295,35 @@ model Answer {
   isDeleted Boolean @default(false)
 
   votes   AnswerVote[]
+  answerReplies AnswerReply[]
   reports Report[]
 
   createdAt DateTime @default(now())
 
   @@index([questionId])
+  @@index([authorId])
+}
+
+model AnswerReply {
+  id        String @id @default(uuid())
+  answerId String
+  answer   Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+  parentReplyId String?
+  parentReply   AnswerReply? @relation("AnswerReplyThread", fields: [parentReplyId], references: [id])
+
+  content   String
+  depth Int @default(0)
+  path String
+
+  answerReplies       AnswerReply[] @relation("AnswerReplyThread")
+  reports Report[]
+
+  createdAt DateTime @default(now())
+
+  @@index([answerId])
+  @@index([parentReplyId])
   @@index([authorId])
 }
 
@@ -329,10 +365,12 @@ model Report {
   questionId String?
   answerId   String?
   replyId    String?
+  answerReplyId String?
 
   comment  Comment?  @relation(fields: [commentId], references: [id])
   answer   Answer?   @relation(fields: [answerId], references: [id])
   reply    Reply?    @relation(fields: [replyId], references: [id])
+  answerReply AnswerReply? @relation(fields: [answerReplyId], references: [id])
 
   createdAt DateTime @default(now())
 

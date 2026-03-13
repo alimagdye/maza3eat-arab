@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import { randomBytes } from 'crypto';
-import AuthService from './service.js';
+import AuthService from './auth.service.js';
 import { Request, Response } from 'express';
 
 class GoogleAuthController {

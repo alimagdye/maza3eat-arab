@@ -2,8 +2,8 @@ import rateLimit from 'express-rate-limit';
 
 const authRateLimiter = {
     oauthRateLimiter: rateLimit({
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 20, // max 20 requests per IP per window
+        windowMs: 15 * 60 * 1000,
+        max: 20,
         standardHeaders: true,
         legacyHeaders: false,
         message: {
@@ -13,8 +13,8 @@ const authRateLimiter = {
     }),
 
     userRateLimiter: rateLimit({
-        windowMs: 60 * 60 * 1000, // 1 hour
-        max: 100, // max 100 requests per IP per window
+        windowMs: 60 * 60 * 1000,
+        max: 100,
         standardHeaders: true,
         legacyHeaders: false,
         message: {
@@ -24,8 +24,8 @@ const authRateLimiter = {
     }),
 
     logoutRateLimiter: rateLimit({
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 5, // max 5 requests per IP per window
+        windowMs: 15 * 60 * 1000,
+        max: 5,
         standardHeaders: true,
         legacyHeaders: false,
         message: {
@@ -35,8 +35,8 @@ const authRateLimiter = {
     }),
 
     refreshTokenRateLimiter: rateLimit({
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 10, // max 10 requests per IP per window
+        windowMs: 15 * 60 * 1000,
+        max: 10,
         standardHeaders: true,
         legacyHeaders: false,
         message: {

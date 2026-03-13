@@ -1,4 +1,4 @@
-import authUtils from './utils.js';
+import authUtils from './auth.utils.js';
 import { prisma } from '../../prisma/client.js';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
@@ -11,7 +11,7 @@ class AuthService {
         avatar: string,
         googleId: string,
     ) {
-        return prisma.user.upsert({
+        return await prisma.user.upsert({
             where: { email },
             update: {
                 name,
@@ -109,7 +109,7 @@ class AuthService {
             where: { id: decoded.sub },
         });
 
-        if (!user || user.isBanned) {
+        if (!user) {
             throw new Error('Unauthorized');
         }
 
@@ -131,7 +131,7 @@ class AuthService {
             include: { tier: true },
         });
 
-        if (!user || user.isDeleted || user.isBanned) {
+        if (!user) {
             return null;
         }
 

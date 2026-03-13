@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import AuthService from './service.js';
+import AuthService from './auth.service.js';
 
 class AuthController {
     private authService = AuthService;
@@ -9,7 +9,7 @@ class AuthController {
 
         if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
-        return res.json({ status: 'success', data: user });
+        return res.status(200).json({ status: 'success', data: user });
     };
 
     logout = async (req: Request, res: Response) => {
@@ -23,7 +23,7 @@ class AuthController {
         res.clearCookie('accessToken');
         res.clearCookie('refreshToken');
 
-        return res.json({ status: 'success' });
+        return res.status(200).json({ status: 'success' });
     };
 
     refresh = async (req: Request, res: Response) => {
@@ -50,7 +50,7 @@ class AuthController {
                 maxAge: Number(process.env.REFRESH_TOKEN_MAX_AGE) * 1000,
             });
 
-            return res.json({ status: 'success' });
+            return res.status(200).json({ status: 'success' });
         } catch (error) {
             console.error(error);
             return res.status(401).json({ message: 'Invalid session' });

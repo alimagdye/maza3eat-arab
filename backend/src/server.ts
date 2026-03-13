@@ -58,8 +58,8 @@ app.get('/health', async (_req: Request, res: Response) => {
 // API Routes
 // -----------------------------
 
-import authRoutes from './modules/auth/routes.js';
-// import postRoutes from "./modules/posts/routes";
+import authRoutes from './modules/auth/auth.routes.js';
+import postRoutes from './modules/posts/post.routes.js';
 // import questionRoutes from "./modules/questions/routes";
 // import userRoutes from "./modules/users/routes";
 // import reportRoutes from "./modules/reports/routes";
@@ -69,7 +69,8 @@ import authRoutes from './modules/auth/routes.js';
 // import adminRoutes from "./modules/admin/routes";
 
 app.use('/api/v1/auth', authRoutes);
-// app.use("/api/v1/posts", postRoutes);
+app.use('/api/v1/posts', postRoutes);
+// app.use("/api/v1/home", homeRoutes);
 // app.use("/api/v1/questions", questionRoutes);
 // app.use("/api/v1/users", userRoutes);
 // app.use("/api/v1/reports", reportRoutes);
