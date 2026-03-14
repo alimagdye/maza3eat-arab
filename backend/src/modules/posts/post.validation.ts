@@ -43,7 +43,10 @@ const postValidation: {
     ],
 
     validateGetPostById: [
-        param('postId').isUUID().withMessage('Invalid post ID format'),
+        param('postId')
+            .notEmpty()
+            .isUUID()
+            .withMessage('Invalid post ID format'),
     ],
 };
 

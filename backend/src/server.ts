@@ -34,25 +34,27 @@ if (NODE_ENV === 'development') {
     app.use(morgan('dev'));
 }
 
+app.use(globalRateLimiter);
+
 // -----------------------------
 // Health Check
 // -----------------------------
 
-app.get('/health', async (_req: Request, res: Response) => {
-    try {
-        await prisma.$queryRaw`SELECT 1`;
-        res.status(200).json({
-            status: 'ok',
-            database: 'connected',
-            timestamp: new Date(),
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            database: 'disconnected',
-        });
-    }
-});
+// app.get('/health', async (_req: Request, res: Response) => {
+//     try {
+//         await prisma.$queryRaw`SELECT 1`;
+//         res.status(200).json({
+//             status: 'ok',
+//             database: 'connected',
+//             timestamp: new Date(),
+//         });
+//     } catch (error) {
+//         res.status(500).json({
+//             status: 'error',
+//             database: 'disconnected',
+//         });
+//     }
+// });
 
 // -----------------------------
 // API Routes
@@ -60,6 +62,7 @@ app.get('/health', async (_req: Request, res: Response) => {
 
 import authRoutes from './modules/auth/auth.routes.js';
 import postRoutes from './modules/posts/post.routes.js';
+import globalRateLimiter from './middlewares/globalRateLimiter.js';
 // import questionRoutes from "./modules/questions/routes";
 // import userRoutes from "./modules/users/routes";
 // import reportRoutes from "./modules/reports/routes";
