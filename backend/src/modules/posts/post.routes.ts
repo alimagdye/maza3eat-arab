@@ -6,13 +6,14 @@ import postValidation from './post.validation.js';
 import validate from '../../middlewares/validateRequest.js';
 import { requireAuth } from '../../middlewares/requireAuth.js';
 import postRateLimiter from './post.rateLimiter.js';
+import likeRoutes from '../likes/like.routes.js';
 
 const router = Router();
 
 router.post(
     '/',
-    postRateLimiter.createPostLimiter,
     requireAuth,
+    postRateLimiter.createPostLimiter,
     uploadPostImages.array('images', 6),
     postValidation.validateCreatePost,
     validate,
@@ -37,11 +38,13 @@ router.get(
 
 router.delete(
     '/:postId',
-    postRateLimiter.deletePostByIdLimiter,
     requireAuth,
+    postRateLimiter.deletePostByIdLimiter,
     postValidation.validateGetPostById,
     validate,
     postController.deletePostById,
 );
+
+router.use('/', likeRoutes);
 
 export default router;

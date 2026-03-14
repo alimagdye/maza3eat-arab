@@ -23,8 +23,8 @@ router.get(
 
 router.get(
     '/me',
-    authRateLimiter.userRateLimiter,
     requireAuth,
+    authRateLimiter.userRateLimiter,
     authController.me,
 );
 
