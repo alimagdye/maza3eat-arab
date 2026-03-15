@@ -7,6 +7,7 @@ import validate from '../../middlewares/validateRequest.js';
 import { requireAuth } from '../../middlewares/requireAuth.js';
 import postRateLimiter from './post.rateLimiter.js';
 import likeRoutes from '../likes/like.routes.js';
+import commentRoutes from '../comments/comment.routes.js';
 
 const router = Router();
 
@@ -46,5 +47,7 @@ router.delete(
 );
 
 router.use('/', likeRoutes);
+
+router.use('/', commentRoutes);
 
 export default router;

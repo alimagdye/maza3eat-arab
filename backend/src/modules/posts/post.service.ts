@@ -284,9 +284,7 @@ class PostService {
         });
 
         if (!post) {
-            throw new Error(
-                'Post not found or you do not have permission to delete it',
-            );
+            throw new Error('POST_NOT_FOUND');
         }
 
         const publicIds = post.images.map((image) => image.publicId);

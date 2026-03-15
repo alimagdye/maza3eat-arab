@@ -8,17 +8,20 @@ const postValidation: {
     validateCreatePost: [
         body('title')
             .isString()
+            .trim()
             .isLength({ min: 3, max: 200 })
             .withMessage('Title must be between 3 and 200 characters'),
         body('content')
             .isString()
-            .isLength({ min: 1 })
+            .trim()
+            .isLength({ min: 1, max: 5000 })
             .withMessage('Content is required'),
         body('tags')
-            .isArray({ max: 10 })
-            .withMessage('Tags must be an array with max 10 items'),
+            .isArray({ min: 1, max: 10 })
+            .withMessage('Tags must be min 1 and max 10'),
         body('tags.*')
             .isString()
+            .trim()
             .isLength({ min: 1, max: 30 })
             .withMessage(
                 'Each tag must be a string between 1 and 30 characters',
@@ -38,13 +41,13 @@ const postValidation: {
         query('search')
             .optional()
             .isString()
+            .trim()
             .isLength({ min: 1, max: 100 })
             .withMessage('Search query must be between 1 and 100 characters'),
     ],
 
     validateGetPostById: [
         param('postId')
-            .notEmpty()
             .isUUID()
             .withMessage('Invalid post ID format'),
     ],

@@ -5,7 +5,6 @@ const likeValidation: {
 } = {
     validateLikeOrUnlikePost: [
         param('postId')
-            .notEmpty()
             .isUUID()
             .withMessage('Invalid post ID format'),
     ],

@@ -3,15 +3,15 @@ import likeController from './like.controller.js';
 import { requireAuth } from '../../middlewares/requireAuth.js';
 import likeValidation from './like.validation.js';
 import validate from '../../middlewares/validateRequest.js';
-import likeOrUnlikeRateLimiter from './like.rateLimiter.js';
+import commentRateLimiter from './like.rateLimiter.js';
 
 const router = Router({ mergeParams: true });
 
 // post like
 router.post(
     '/:postId/like',
-    likeOrUnlikeRateLimiter,
     requireAuth,
+    commentRateLimiter.likeOrUnlikeLimiter,
     likeValidation.validateLikeOrUnlikePost,
     validate,
     likeController.likePost,
@@ -19,8 +19,8 @@ router.post(
 
 router.delete(
     '/:postId/like',
-    likeOrUnlikeRateLimiter,
     requireAuth,
+    commentRateLimiter.likeOrUnlikeLimiter,
     likeValidation.validateLikeOrUnlikePost,
     validate,
     likeController.unlikePost,

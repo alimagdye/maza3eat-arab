@@ -1,7 +1,7 @@
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { Request } from 'express';
 
-const likeOrUnlikeRateLimiter = rateLimit({
+const likeOrUnlikeLimiter = rateLimit({
     windowMs: 30 * 60 * 1000,
     max: 5,
 
@@ -24,4 +24,8 @@ const likeOrUnlikeRateLimiter = rateLimit({
     },
 });
 
-export default likeOrUnlikeRateLimiter;
+const likeRateLimiter = {
+    likeOrUnlikeLimiter,
+};
+
+export default likeRateLimiter;

@@ -147,6 +147,9 @@ model Post {
   @@index([status])
   @@index([authorId])
   @@index([titleNormalized])
+  @@index([createdAt])
+  @@index([commentsCount])
+  @@index([likesCount])
 }
 
 model PostTag {
@@ -194,6 +197,7 @@ model Comment {
   createdAt DateTime @default(now())
 
   @@index([postId])
+  @@index([createdAt])
   @@index([authorId])
 }
 

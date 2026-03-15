@@ -113,10 +113,11 @@ class PostController {
         } catch (error: any) {
             console.error(error);
 
-            if (error.message.includes('Post not found')) {
+            if (error.message === 'POST_NOT_FOUND') {
                 return res.status(404).json({
                     status: 'fail',
-                    message: error.message,
+                    message:
+                        'Post not found or you do not have permission to delete it',
                 });
             }
 
