@@ -55,15 +55,15 @@ class PostController {
 
     getPosts = async (req: Request, res: Response) => {
         const scope: string = (req.query.scope as string) || 'community';
-        const page: number = Number(req.query.page) || 1;
+        const cursor = req.query.cursor as string | null;
         const sort: string = (req.query.sort as string) || 'latest';
         const search: string = (req.query.search as string) || '';
 
         try {
             const result = await this.postService.getPosts(
                 scope,
-                page,
                 sort,
+                cursor,
                 search,
             );
 

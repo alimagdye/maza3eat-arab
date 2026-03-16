@@ -29,9 +29,7 @@ const postValidation: {
     ],
 
     validateGetPosts: [
-        query('page')
-            .isInt({ min: 1 })
-            .withMessage('Page must be a positive integer'),
+        query('cursor').optional().isUUID().withMessage('Invalid cursor'),
         query('sort')
             .isIn(['latest', 'popular'])
             .withMessage('Invalid sort option'),
@@ -47,9 +45,7 @@ const postValidation: {
     ],
 
     validateGetPostById: [
-        param('postId')
-            .isUUID()
-            .withMessage('Invalid post ID format'),
+        param('postId').isUUID().withMessage('Invalid post ID format'),
     ],
 };
 

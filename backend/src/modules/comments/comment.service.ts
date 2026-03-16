@@ -47,7 +47,7 @@ class CommentService {
         });
     }
 
-    async getCommentsByPostId(postId: string, cursor?: string) {
+    async getCommentsByPostId(postId: string, cursor: string | null = null) {
         const pageSize = 5;
 
         const post = await prisma.post.findFirst({

@@ -5,7 +5,9 @@ class PostUtils {
         return name
             .toLowerCase()
             .replace(/\.[^/.]+$/, '')
-            .replace(/[^a-z0-9]/g, '_');
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .slice(0, 30);
     }
 
     generateId(filename: string) {
@@ -26,6 +28,15 @@ class PostUtils {
                 {
                     folder: 'posts',
                     public_id: this.generateId(filename),
+                    transformation: [
+                        {
+                            quality: 'auto:best',
+                            fetch_format: 'auto',
+                            width: 2048,
+                            height: 2048,
+                            crop: 'limit',
+                        },
+                    ],
                 },
                 (error, result) => {
                     if (error) return reject(error);
