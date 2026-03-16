@@ -45,7 +45,7 @@ class CommentController {
     getCommentsByPostId = async (req: Request, res: Response) => {
         try {
             const { postId } = req.params as { postId: string };
-            const cursor = req.query.cursor as string | undefined;
+            const cursor = req.query.cursor as string | null;
 
             const data = await this.commentService.getCommentsByPostId(
                 postId,

@@ -15,7 +15,7 @@ router.post(
     '/',
     requireAuth,
     postRateLimiter.createPostLimiter,
-    uploadPostImages.array('images', 6),
+    uploadPostImages,
     postValidation.validateCreatePost,
     validate,
     postController.createPost,

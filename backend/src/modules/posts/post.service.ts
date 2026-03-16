@@ -81,29 +81,165 @@ class PostService {
         return post;
     }
 
+    // async getPosts(
+    //     scope: string,
+    //     page: number,
+    //     sort: string,
+    //     search: string = '',
+    // ) {
+    //     const take = 3;
+    //     const skip = (page - 1) * take;
+
+    //     const role = scope === 'community' ? 'USER' : 'ADMIN';
+
+    //     const where: any = {
+    //         status: 'APPROVED',
+
+    //         author: {
+    //             role,
+    //         },
+    //     };
+
+    //     if (search && search.trim() !== '') {
+    //         const s = normalizeArabic(search);
+
+    //         const words = s.split(' ').filter((w) => w.length > 0);
+
+    //         where.OR = words.flatMap((word) => [
+    //             {
+    //                 titleNormalized: {
+    //                     contains: word,
+    //                 },
+    //             },
+    //             {
+    //                 tags: {
+    //                     some: {
+    //                         normalizedName: {
+    //                             contains: word,
+    //                         },
+    //                     },
+    //                 },
+    //             },
+    //         ]);
+    //     }
+
+    //     const orderBy =
+    //         sort === 'popular'
+    //             ? [
+    //                   { likesCount: 'desc' as const },
+    //                   { commentsCount: 'desc' as const },
+    //               ]
+    //             : [{ createdAt: 'desc' as const }];
+
+    //     const [posts, total] = await prisma.$transaction([
+    //         prisma.post.findMany({
+    //             where,
+    //             orderBy,
+    //             skip,
+    //             take,
+
+    //             select: {
+    //                 id: true,
+    //                 title: true,
+    //                 content: true,
+
+    //                 likesCount: true,
+    //                 commentsCount: true,
+
+    //                 createdAt: true,
+    //                 tags: {
+    //                     take: 4,
+    //                     select: {
+    //                         name: true,
+    //                     },
+    //                 },
+
+    //                 images: {
+    //                     take: 1,
+    //                     orderBy: {
+    //                         createdAt: 'asc',
+    //                     },
+    //                     select: {
+    //                         imageUrl: true,
+    //                         originalName: true,
+    //                     },
+    //                 },
+
+    //                 author: {
+    //                     select: {
+    //                         name: true,
+    //                         avatar: true,
+
+    //                         tier: {
+    //                             select: {
+    //                                 name: true,
+    //                                 badgeColor: true,
+    //                             },
+    //                         },
+    //                     },
+    //                 },
+    //             },
+    //         }),
+
+    //         prisma.post.count({
+    //             where,
+    //         }),
+    //     ]);
+
+    //     const totalPages = Math.ceil(total / take);
+
+    //     const data = posts.map((post) => ({
+    //         id: post.id,
+    //         title: post.title,
+    //         content: post.content.slice(0, 120),
+
+    //         likesCount: post.likesCount,
+    //         commentsCount: post.commentsCount,
+
+    //         publishDate: post.createdAt,
+
+    //         tags: post.tags,
+
+    //         imageUrl: post.images[0]?.imageUrl ?? null,
+    //         imageName: post.images[0]?.originalName ?? null,
+
+    //         author: {
+    //             name: post.author.name,
+    //             avatar: post.author.avatar,
+
+    //             tierName: post.author.tier?.name ?? null,
+    //             badgeColor: post.author.tier?.badgeColor ?? null,
+    //         },
+    //     }));
+
+    //     return {
+    //         posts: data,
+    //         totalPages,
+    //         currentPage: page,
+    //     };
+    // }
+
     async getPosts(
         scope: string,
-        page: number,
         sort: string,
+        cursor: string | null = null,
         search: string = '',
     ) {
-        const take = 3;
-        const skip = (page - 1) * take;
+        const take = 5;
 
         const role = scope === 'community' ? 'USER' : 'ADMIN';
 
         const where: any = {
             status: 'APPROVED',
-
-            author: {
-                role,
-            },
+            author: { role },
         };
 
         if (search && search.trim() !== '') {
-            const s = normalizeArabic(search);
+            const searchQuery = normalizeArabic(search);
 
-            const words = s.split(' ').filter((w) => w.length > 0);
+            const words = searchQuery
+                .split(' ')
+                .filter((word) => word.length > 0);
 
             where.OR = words.flatMap((word) => [
                 {
@@ -123,70 +259,69 @@ class PostService {
             ]);
         }
 
+        // ---------- order ----------
         const orderBy =
             sort === 'popular'
-                ? [
-                      { likesCount: 'desc' as const },
-                      { commentsCount: 'desc' as const },
-                  ]
-                : [{ createdAt: 'desc' as const }];
+                ? [{ commentsCount: 'desc' as const }, { id: 'desc' as const }]
+                : [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
 
-        const [posts, total] = await prisma.$transaction([
-            prisma.post.findMany({
-                where,
-                orderBy,
-                skip,
-                take,
+        const posts = await prisma.post.findMany({
+            where,
+            orderBy,
+            take,
 
-                select: {
-                    id: true,
-                    title: true,
-                    content: true,
+            ...(cursor && {
+                skip: 1,
+                cursor: { id: cursor },
+            }),
 
-                    likesCount: true,
-                    commentsCount: true,
+            select: {
+                id: true,
+                title: true,
+                content: true,
 
-                    createdAt: true,
-                    tags: {
-                        take: 4,
-                        select: {
-                            name: true,
-                        },
+                likesCount: true,
+                commentsCount: true,
+
+                createdAt: true,
+                tags: {
+                    take: 4,
+                    select: { name: true },
+                },
+
+                images: {
+                    take: 1,
+                    orderBy: { createdAt: 'asc' },
+                    select: {
+                        imageUrl: true,
+                        originalName: true,
                     },
+                },
 
-                    images: {
-                        take: 1,
-                        orderBy: {
-                            createdAt: 'asc',
-                        },
-                        select: {
-                            imageUrl: true,
-                            originalName: true,
-                        },
+                _count: {
+                    select: {
+                        images: true,
                     },
+                },
 
-                    author: {
-                        select: {
-                            name: true,
-                            avatar: true,
-
-                            tier: {
-                                select: {
-                                    name: true,
-                                    badgeColor: true,
-                                },
+                author: {
+                    select: {
+                        name: true,
+                        avatar: true,
+                        tier: {
+                            select: {
+                                name: true,
+                                badgeColor: true,
                             },
                         },
                     },
                 },
-            }),
+            },
+        });
 
-            prisma.post.count({
-                where,
-            }),
-        ]);
+        const hasMore = posts.length === take;
 
-        const totalPages = Math.ceil(total / take);
+        const nextCursor = hasMore ? posts[posts.length - 1].id : null;
 
         const data = posts.map((post) => ({
             id: post.id,
@@ -200,8 +335,11 @@ class PostService {
 
             tags: post.tags,
 
-            imageUrl: post.images[0]?.imageUrl ?? null,
-            imageName: post.images[0]?.originalName ?? null,
+            image: {
+                url: post.images[0]?.imageUrl ?? null,
+                name: post.images[0]?.originalName ?? null,
+                remainingImages: Math.max(post._count.images - 1, 0),
+            },
 
             author: {
                 name: post.author.name,
@@ -214,8 +352,8 @@ class PostService {
 
         return {
             posts: data,
-            totalPages,
-            currentPage: page,
+            nextCursor,
+            hasMore,
         };
     }
 
