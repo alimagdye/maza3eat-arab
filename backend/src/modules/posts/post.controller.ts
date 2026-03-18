@@ -127,6 +127,33 @@ class PostController {
             });
         }
     };
+
+    getHomePosts = async (req: Request, res: Response) => {
+        const scope: string = (req.query.scope as string) || 'community';
+
+        try {
+            const posts = await this.postService.getHomePosts(scope);
+
+            return res.status(200).json({
+                status: 'success',
+                data: posts,
+            });
+        } catch (error: any) {
+            console.error(error);
+
+            if (error.message === 'INVALID_SCOPE') {
+                return res.status(400).json({
+                    status: 'fail',
+                    message: 'Invalid scope',
+                });
+            }
+
+            return res.status(500).json({
+                status: 'error',
+                message: 'Internal server error',
+            });
+        }
+    };
 }
 
 export default new PostController();
