@@ -4,6 +4,7 @@ const postValidation: {
     validateCreatePost: ValidationChain[];
     validateGetPosts: ValidationChain[];
     validateGetPostById: ValidationChain[];
+    validateGetHomePosts: ValidationChain[];
 } = {
     validateCreatePost: [
         body('title')
@@ -46,6 +47,12 @@ const postValidation: {
 
     validateGetPostById: [
         param('postId').isUUID().withMessage('Invalid post ID format'),
+    ],
+
+    validateGetHomePosts: [
+        query('scope')
+            .isIn(['community', 'admin'])
+            .withMessage('Invalid scope option'),
     ],
 };
 

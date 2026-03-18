@@ -22,6 +22,13 @@ router.post(
 );
 
 router.get(
+    '/home',
+    postValidation.validateGetHomePosts,
+    validate,
+    postController.getHomePosts,
+);
+
+router.get(
     '/',
     postRateLimiter.getPostsLimiter,
     postValidation.validateGetPosts,

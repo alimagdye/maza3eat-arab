@@ -50,6 +50,11 @@ enum ContactRequestStatus {
   DECLINED
 }
 
+enum HomeScope {
+  ADMIN
+  COMMUNITY
+}
+
 //////////////////////////////////////////////////////
 // MODELS
 //////////////////////////////////////////////////////
@@ -138,6 +143,8 @@ model Post {
   comments Comment[]
   tags     PostTag[]
   likes    PostLike[]
+  homePosts HomePost[]
+  
   likesCount Int @default(0)
   commentsCount Int @default(0)
 
@@ -260,6 +267,24 @@ model ReplyLike {
   createdAt DateTime @default(now())
 
   @@id([userId, replyId])
+}
+
+//////////////////////////////////////////////////////
+// HOME POSTS SECTION
+//////////////////////////////////////////////////////
+
+model HomePost {
+  id String @id @default(uuid())
+
+  postId String
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  scope HomeScope
+
+  position Int
+
+  @@unique([scope, position])
+  @@unique([scope, postId])
 }
 
 //////////////////////////////////////////////////////
