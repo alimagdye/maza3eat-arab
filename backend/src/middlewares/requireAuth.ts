@@ -1,13 +1,26 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-// import { prisma } from '../prisma/client';
 
 export const requireAuth = async (
     req: Request,
     res: Response,
     next: NextFunction,
 ) => {
-    const token = req.cookies.accessToken;
+    const token = req.cookies?.accessToken;
+
+    if (!token || typeof token !== 'string') {
+        return res.status(401).json({
+            status: 'fail',
+            message: 'Unauthorized',
+        });
+    }
+
+    if (!token.includes('.')) {
+        return res.status(401).json({
+            status: 'fail',
+            message: 'Malformed token',
+        });
+    }
 
     if (!token) {
         return res.status(401).json({
@@ -28,20 +41,6 @@ export const requireAuth = async (
             });
         }
 
-        // const user = await prisma.user.findUnique({
-        //   where: { id: decoded.sub },
-        // });
-        // if (!user || user.isDeleted || user.isBanned) {
-        //   return res.status(401).json({
-        //     status: 'fail',
-        //     message: 'Unauthorized',
-        //   });
-        // }
-        // req.user = {
-        //   sub: user.id,
-        //   role: user.role,
-        //   tierId: user.tierId,
-        // };
         req.user = decoded;
 
         next();

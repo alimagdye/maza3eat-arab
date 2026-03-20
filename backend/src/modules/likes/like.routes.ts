@@ -3,35 +3,62 @@ import likeController from './like.controller.js';
 import { requireAuth } from '../../middlewares/requireAuth.js';
 import likeValidation from './like.validation.js';
 import validate from '../../middlewares/validateRequest.js';
-import commentRateLimiter from './like.rateLimiter.js';
+import likeRateLimiter from './like.rateLimiter.js';
 
-const router = Router({ mergeParams: true });
+const router = Router();
 
-// post like
 router.post(
-    '/:postId/like',
+    '/posts/:postId/like',
     requireAuth,
-    commentRateLimiter.likeOrUnlikeLimiter,
+    likeRateLimiter.likeOrUnlikePostLimiter,
     likeValidation.validateLikeOrUnlikePost,
     validate,
     likeController.likePost,
 );
 
 router.delete(
-    '/:postId/like',
+    '/posts/:postId/like',
     requireAuth,
-    commentRateLimiter.likeOrUnlikeLimiter,
+    likeRateLimiter.likeOrUnlikePostLimiter,
     likeValidation.validateLikeOrUnlikePost,
     validate,
     likeController.unlikePost,
 );
 
-// comment like
-// router.post('/:commentId/like', requireAuth, likeController.likeComment);
-// router.delete('/:commentId/like', requireAuth, likeController.unlikeComment);
+router.post(
+    '/comments/:commentId/like',
+    requireAuth,
+    likeRateLimiter.likeOrUnlikeCommentLimiter,
+    likeValidation.validateLikeOrUnlikeComment,
+    validate,
+    likeController.likeComment,
+);
 
-// // reply like
-// router.post('/:replyId/like', requireAuth, likeController.likeReply);
-// router.delete('/:replyId/like', requireAuth, likeController.unlikeReply);
+router.delete(
+    '/comments/:commentId/like',
+    requireAuth,
+    likeRateLimiter.likeOrUnlikeCommentLimiter,
+    likeValidation.validateLikeOrUnlikeComment,
+    validate,
+    likeController.unlikeComment,
+);
+
+router.post(
+    '/replies/:replyId/like',
+    requireAuth,
+    likeRateLimiter.likeOrUnlikeReplyLimiter,
+    likeValidation.validateLikeOrUnlikeReply,
+    validate,
+    likeController.likeReply,
+);
+
+router.delete(
+    '/replies/:replyId/like',
+    requireAuth,
+    likeRateLimiter.likeOrUnlikeReplyLimiter,
+    likeValidation.validateLikeOrUnlikeReply,
+    validate,
+    likeController.unlikeReply,
+);
 
 export default router;

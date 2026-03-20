@@ -29,6 +29,76 @@ class LikeService {
                         likesCount: { decrement: 1 },
                     },
                 });
+            } else {
+                throw new Error('Like not found');
+            }
+        });
+    }
+
+    async likeComment(userId: string, commentId: string) {
+        await prisma.$transaction(async (tx) => {
+            await tx.commentLike.create({
+                data: { userId, commentId },
+            });
+
+            await tx.comment.update({
+                where: { id: commentId },
+                data: {
+                    likesCount: { increment: 1 },
+                },
+            });
+        });
+    }
+
+    async unlikeComment(userId: string, commentId: string) {
+        await prisma.$transaction(async (tx) => {
+            const result = await tx.commentLike.deleteMany({
+                where: { userId, commentId },
+            });
+
+            if (result.count > 0) {
+                await tx.comment.update({
+                    where: { id: commentId },
+                    data: {
+                        likesCount: { decrement: 1 },
+                    },
+                });
+            } else {
+                throw new Error('Like not found');
+            }
+        });
+    }
+
+    async likeReply(userId: string, replyId: string) {
+        await prisma.$transaction(async (tx) => {
+            await tx.replyLike.create({
+                data: { userId, replyId },
+            });
+
+            await tx.reply.update({
+                where: { id: replyId },
+                data: {
+                    likesCount: { increment: 1 },
+                },
+            });
+        });
+    }
+
+    async unlikeReply(userId: string, replyId: string) {
+        await prisma.$transaction(async (tx) => {
+            const result = await tx.replyLike.deleteMany({
+                where: { userId, replyId },
+            });
+
+            if (result.count > 0) {
+                await tx.reply.update({
+                    where: { id: replyId },
+                    data: {
+                        likesCount: { decrement: 1 },
+                    },
+                });
+            } else {
+                throw new Error('Like not found');
             }
         });
     }

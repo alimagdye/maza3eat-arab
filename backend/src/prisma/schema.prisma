@@ -263,6 +263,8 @@ model CommentLike {
   createdAt DateTime @default(now())
 
   @@id([userId, commentId])
+
+  @@index([commentId])
 }
 
 model ReplyLike {
@@ -275,6 +277,7 @@ model ReplyLike {
   createdAt DateTime @default(now())
 
   @@id([userId, replyId])
+  @@index([replyId])
 }
 
 //////////////////////////////////////////////////////
