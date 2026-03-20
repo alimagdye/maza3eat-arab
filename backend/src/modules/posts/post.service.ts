@@ -257,6 +257,9 @@ class PostService {
                 commentsCount: true,
             },
         });
+        if (!post) {
+            throw new Error('POST_NOT_FOUND');
+        }
         return {
             title: post?.title,
             content: post?.content,

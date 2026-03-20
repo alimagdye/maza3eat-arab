@@ -5,6 +5,7 @@ class CommentService {
         return await prisma.$transaction(async (tx) => {
             const post = await tx.post.findUnique({
                 where: { id: postId },
+                select: { id: true, status: true },
             });
 
             if (!post || post.status !== 'APPROVED') {
@@ -108,6 +109,12 @@ class CommentService {
         return await prisma.$transaction(async (tx) => {
             const comment = await tx.comment.findUnique({
                 where: { id: commentId },
+                select: {
+                    id: true,
+                    postId: true,
+                    authorId: true,
+                    repliesCount: true,
+                },
             });
 
             if (!comment || comment.postId !== postId) {
@@ -126,7 +133,7 @@ class CommentService {
                 where: { id: postId },
                 data: {
                     commentsCount: {
-                        decrement: 1,
+                        decrement: 1 + comment.repliesCount,
                     },
                 },
             });

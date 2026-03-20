@@ -92,8 +92,15 @@ class PostController {
                     .json({ status: 'fail', message: 'Post not found' });
             }
             return res.status(200).json({ status: 'success', data: post });
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
+
+            if (error.message === 'POST_NOT_FOUND') {
+                return res
+                    .status(404)
+                    .json({ status: 'fail', message: 'Post not found' });
+            }
+
             return res
                 .status(500)
                 .json({ status: 'error', message: 'Internal server error' });
