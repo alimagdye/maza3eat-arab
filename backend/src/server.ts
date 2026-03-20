@@ -17,6 +17,7 @@ const NODE_ENV: string = process.env.NODE_ENV || 'development';
 // -----------------------------
 // Global Middlewares
 // -----------------------------
+import globalRateLimiter from './middlewares/globalRateLimiter.js';
 
 app.use(helmet());
 
@@ -62,7 +63,7 @@ app.use(globalRateLimiter);
 
 import authRoutes from './modules/auth/auth.routes.js';
 import postRoutes from './modules/posts/post.routes.js';
-import globalRateLimiter from './middlewares/globalRateLimiter.js';
+import replyRoutes from './modules/replies/reply.routes.js';
 // import questionRoutes from "./modules/questions/routes";
 // import userRoutes from "./modules/users/routes";
 // import reportRoutes from "./modules/reports/routes";
@@ -73,6 +74,7 @@ import globalRateLimiter from './middlewares/globalRateLimiter.js';
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/posts', postRoutes);
+app.use('/api/v1', replyRoutes);
 // app.use("/api/v1/home", homeRoutes);
 // app.use("/api/v1/questions", questionRoutes);
 // app.use("/api/v1/users", userRoutes);

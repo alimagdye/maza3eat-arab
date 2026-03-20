@@ -151,12 +151,10 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([status])
-  @@index([authorId])
+  @@index([status, createdAt, id])
+  @@index([status, commentsCount, id])
+  @@index([authorId, createdAt, id])
   @@index([titleNormalized])
-  @@index([createdAt])
-  @@index([commentsCount])
-  @@index([likesCount])
 }
 
 model PostTag {
@@ -183,7 +181,7 @@ model PostImage {
 
   createdAt DateTime @default(now())
 
-  @@index([postId])
+  @@index([postId, createdAt])
 }
 
 model Comment {
@@ -196,6 +194,7 @@ model Comment {
 
   content   String
   likesCount Int @default(0)
+  repliesCount Int @default(0)
   
   replies Reply[]
   likes CommentLike[]
@@ -203,8 +202,7 @@ model Comment {
 
   createdAt DateTime @default(now())
 
-  @@index([postId])
-  @@index([createdAt])
+  @@index([postId, createdAt, id])
   @@index([authorId])
 }
 
@@ -231,6 +229,14 @@ model Reply {
   @@index([commentId])
   @@index([parentReplyId])
   @@index([authorId])
+
+  @@index([commentId, path])
+  @@index([path])
+
+  @@index([commentId, createdAt, id])
+  @@index([parentReplyId, createdAt, id])
+
+  @@unique([commentId, path])
 }
 
 model PostLike {
@@ -243,6 +249,8 @@ model PostLike {
   createdAt DateTime @default(now())
 
   @@id([userId, postId])
+
+  @@index([postId])
 }
 
 model CommentLike {

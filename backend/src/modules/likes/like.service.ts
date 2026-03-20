@@ -18,22 +18,18 @@ class LikeService {
 
     async unlikePost(userId: string, postId: string) {
         await prisma.$transaction(async (tx) => {
-            await tx.postLike.delete({
-                where: {
-                    userId_postId: {
-                        userId,
-                        postId,
-                    },
-                },
+            const result = await tx.postLike.deleteMany({
+                where: { userId, postId },
             });
-            await tx.post.update({
-                where: { id: postId },
-                data: {
-                    likesCount: {
-                        decrement: 1,
+
+            if (result.count > 0) {
+                await tx.post.update({
+                    where: { id: postId },
+                    data: {
+                        likesCount: { decrement: 1 },
                     },
-                },
-            });
+                });
+            }
         });
     }
 }
