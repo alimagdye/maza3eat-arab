@@ -9,13 +9,13 @@ const router = express.Router();
 
 router.get(
     '/google',
-    authRateLimiter.oauthRateLimiter,
+    // authRateLimiter.oauthRateLimiter,
     googleAuthController.getAuthUrl,
 );
 
 router.get(
     '/google/callback',
-    authRateLimiter.oauthRateLimiter,
+    // authRateLimiter.oauthRateLimiter,
     authValidation.validateHandleCallback,
     validate,
     googleAuthController.handleCallback,

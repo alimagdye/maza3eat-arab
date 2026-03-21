@@ -40,7 +40,6 @@ class PostService {
                     titleNormalized: normalizeArabic(title),
                     content,
                     authorId: userId,
-                    status: 'PENDING',
                 },
             });
 
@@ -55,20 +54,13 @@ class PostService {
                 })),
             });
 
-            const tagMap = new Map<string, string>();
+            const uniqueOriginalTags = [
+                ...new Set(tags.map((tag) => tag.trim()).filter(Boolean)),
+            ];
 
-            for (const tag of tags) {
-                const original = tag.trim();
-                if (!original) continue;
-
-                const normalized = normalizeArabic(original);
-
-                if (!tagMap.has(normalized)) {
-                    tagMap.set(normalized, original);
-                }
-            }
-
-            const normalizedList = [...tagMap.keys()];
+            const normalizedList = uniqueOriginalTags.map((tag) =>
+                normalizeArabic(tag),
+            );
 
             const existing = await tx.tag.findMany({
                 where: {
@@ -87,12 +79,9 @@ class PostService {
             );
 
             const missing = normalizedList
-                .filter(
-                    (normalizedElement) =>
-                        !tagIdByNormalized.has(normalizedElement),
-                )
-                .map((normalizedElement) => ({
-                    normalizedName: normalizedElement,
+                .filter((n) => !tagIdByNormalized.has(n))
+                .map((n) => ({
+                    normalizedName: n,
                 }));
 
             if (missing.length > 0) {
@@ -104,7 +93,7 @@ class PostService {
                 const created = await tx.tag.findMany({
                     where: {
                         normalizedName: {
-                            in: missing.map((missed) => missed.normalizedName),
+                            in: missing.map((m) => m.normalizedName),
                         },
                     },
                     select: {
@@ -119,11 +108,15 @@ class PostService {
             }
 
             await tx.postTag.createMany({
-                data: normalizedList.map((normalized) => ({
-                    postId: newPost.id,
-                    tagId: tagIdByNormalized.get(normalized)!,
-                    name: tagMap.get(normalized)!,
-                })),
+                data: uniqueOriginalTags.map((original) => {
+                    const normalized = normalizeArabic(original);
+
+                    return {
+                        postId: newPost.id,
+                        tagId: tagIdByNormalized.get(normalized)!,
+                        name: original,
+                    };
+                }),
             });
 
             return newPost;
@@ -172,7 +165,6 @@ class PostService {
             ]);
         }
 
-        // ---------- order ----------
         const orderBy =
             sort === 'popular'
                 ? [{ commentsCount: 'desc' as const }, { id: 'desc' as const }]
@@ -455,7 +447,7 @@ class PostService {
         posts = posts.map((post) => ({
             id: post.id,
             title: post.title,
-            content: post.content.slice(0, 120),
+            content: post.content.slice(0, 450),
 
             likesCount: post.likesCount,
             commentsCount: post.commentsCount,
