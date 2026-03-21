@@ -159,13 +159,23 @@ model Post {
 
 model PostTag {
   postId String
-  name   String
-  normalizedName String
+  tagId String
+
+  name String
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
-  @@id([postId, normalizedName])
-  @@index([normalizedName])
+  @@id([postId, tagId])
+  @@index([tagId, postId])
+}
+
+model Tag {
+  id String @id @default(uuid())
+
+  normalizedName String @unique
+
+  posts PostTag[]
 }
 
 model PostImage {
