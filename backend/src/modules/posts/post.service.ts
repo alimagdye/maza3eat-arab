@@ -20,18 +20,20 @@ class PostService {
         if (!uploads || uploads.length < 1) {
             throw new Error('Post must have at least 1 image');
         }
+
         if (uploads.length > 6) {
             throw new Error('Max 6 images');
         }
+
         if (!tags || tags.length < 1) {
             throw new Error('Post must have at least 1 tag');
         }
+
         if (tags.length > 10) {
             throw new Error('Max 10 tags');
         }
 
-        const post = await prisma.$transaction(async (tx) => {
-            // Create the post first to get the ID
+        return prisma.$transaction(async (tx) => {
             const newPost = await tx.post.create({
                 data: {
                     title,
@@ -43,20 +45,20 @@ class PostService {
             });
 
             await tx.postImage.createMany({
-                data: uploads.map((img) => ({
+                data: uploads.map((image) => ({
                     postId: newPost.id,
-                    imageUrl: img.url,
-                    publicId: img.publicId,
-                    originalName: img.originalName,
-                    width: img.width,
-                    height: img.height,
+                    imageUrl: image.url,
+                    publicId: image.publicId,
+                    originalName: image.originalName,
+                    width: image.width,
+                    height: image.height,
                 })),
             });
 
             const tagMap = new Map<string, string>();
+
             for (const tag of tags) {
                 const original = tag.trim();
-
                 if (!original) continue;
 
                 const normalized = normalizeArabic(original);
@@ -66,20 +68,66 @@ class PostService {
                 }
             }
 
-            const uniqueTags = Array.from(tagMap.entries());
+            const normalizedList = [...tagMap.keys()];
+
+            const existing = await tx.tag.findMany({
+                where: {
+                    normalizedName: {
+                        in: normalizedList,
+                    },
+                },
+                select: {
+                    id: true,
+                    normalizedName: true,
+                },
+            });
+
+            const tagIdByNormalized = new Map(
+                existing.map((tag) => [tag.normalizedName, tag.id]),
+            );
+
+            const missing = normalizedList
+                .filter(
+                    (normalizedElement) =>
+                        !tagIdByNormalized.has(normalizedElement),
+                )
+                .map((normalizedElement) => ({
+                    normalizedName: normalizedElement,
+                }));
+
+            if (missing.length > 0) {
+                await tx.tag.createMany({
+                    data: missing,
+                    skipDuplicates: true,
+                });
+
+                const created = await tx.tag.findMany({
+                    where: {
+                        normalizedName: {
+                            in: missing.map((missed) => missed.normalizedName),
+                        },
+                    },
+                    select: {
+                        id: true,
+                        normalizedName: true,
+                    },
+                });
+
+                for (const tag of created) {
+                    tagIdByNormalized.set(tag.normalizedName, tag.id);
+                }
+            }
 
             await tx.postTag.createMany({
-                data: uniqueTags.map(([normalized, original]) => ({
+                data: normalizedList.map((normalized) => ({
                     postId: newPost.id,
-                    name: original,
-                    normalizedName: normalized,
+                    tagId: tagIdByNormalized.get(normalized)!,
+                    name: tagMap.get(normalized)!,
                 })),
             });
 
             return newPost;
         });
-
-        return post;
     }
 
     async getPosts(
@@ -113,8 +161,10 @@ class PostService {
                 {
                     tags: {
                         some: {
-                            normalizedName: {
-                                contains: word,
+                            tag: {
+                                normalizedName: {
+                                    equals: word,
+                                },
                             },
                         },
                     },
@@ -189,7 +239,7 @@ class PostService {
         const data = posts.map((post) => ({
             id: post.id,
             title: post.title,
-            content: post.content.slice(0, 120),
+            content: post.content.slice(0, 450),
 
             likesCount: post.likesCount,
             commentsCount: post.commentsCount,
@@ -264,6 +314,12 @@ class PostService {
             title: post?.title,
             content: post?.content,
             publishDate: post?.createdAt,
+            author: {
+                name: post?.author.name,
+                avatar: post?.author.avatar,
+                tierName: post?.author.tier?.name ?? null,
+                badgeColor: post?.author.tier?.badgeColor ?? null,
+            },
             images: post?.images,
             tags: post?.tags,
             likesCount: post?.likesCount,
@@ -279,9 +335,16 @@ class PostService {
             },
             select: {
                 id: true,
+
                 images: {
                     select: {
                         publicId: true,
+                    },
+                },
+
+                tags: {
+                    select: {
+                        tagId: true,
                     },
                 },
             },
@@ -292,14 +355,31 @@ class PostService {
         }
 
         const publicIds = post.images.map((image) => image.publicId);
-        if (post.images.length > 0) {
+        const tagIds = post.tags.map((tag) => tag.tagId);
+
+        if (publicIds.length > 0) {
             await postUtils.deleteImages(publicIds);
         }
 
-        await prisma.post.delete({
-            where: {
-                id: post.id,
-            },
+        await prisma.$transaction(async (tx) => {
+            await tx.post.delete({
+                where: {
+                    id: post.id,
+                },
+            });
+
+            if (tagIds.length > 0) {
+                await tx.tag.deleteMany({
+                    where: {
+                        id: {
+                            in: tagIds,
+                        },
+                        posts: {
+                            none: {},
+                        },
+                    },
+                });
+            }
         });
 
         return true;
