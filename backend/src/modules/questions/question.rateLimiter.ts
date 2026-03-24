@@ -23,9 +23,9 @@ const createLimiter = (max: number, message: string) =>
         },
     });
 
-const createPostLimiter = createLimiter(
+const createQuestionLimiter = createLimiter(
     10,
-    'Too many post creation requests. Please try again later.',
+    'Too many question creation requests. Please try again later.',
 );
 
 const browseLimiter = createLimiter(
@@ -38,12 +38,16 @@ const searchLimiter = createLimiter(
     'Too many search requests. Please try again later.',
 );
 
-const getPostByIdLimiter = createLimiter(
+const getQuestionByIdLimiter = createLimiter(
     300,
     'Too many requests. Please try again later.',
 );
 
-const getPostsLimiter = (req: Request, res: Response, next: NextFunction) => {
+const getQuestionsLimiter = (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
     if (
         typeof req.query.search === 'string' &&
         req.query.search.trim() !== ''
@@ -54,16 +58,16 @@ const getPostsLimiter = (req: Request, res: Response, next: NextFunction) => {
     return browseLimiter(req, res, next);
 };
 
-const deletePostByIdLimiter = createLimiter(
+const deleteQuestionByIdLimiter = createLimiter(
     20,
     'Too many delete requests. Please try again later.',
 );
 
-const postRateLimiter = {
-    createPostLimiter,
-    getPostsLimiter,
-    getPostByIdLimiter,
-    deletePostByIdLimiter,
+const questionRateLimiter = {
+    createQuestionLimiter,
+    getQuestionsLimiter,
+    getQuestionByIdLimiter,
+    deleteQuestionByIdLimiter,
 };
 
-export default postRateLimiter;
+export default questionRateLimiter;

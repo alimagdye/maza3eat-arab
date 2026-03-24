@@ -3,23 +3,23 @@ import replyUtils from './reply.utils.js';
 
 class ReplyService {
     private MAX_DEPTH = 10;
-    async replyToComment(commentId: string, userId: string, content: string) {
+    async replyToAnswer(answerId: string, userId: string, content: string) {
         return await prisma.$transaction(async (tx) => {
-            const comment = await tx.comment.findUnique({
-                where: { id: commentId },
+            const answer = await tx.answer.findUnique({
+                where: { id: answerId },
                 select: {
                     id: true,
-                    postId: true,
+                    questionId: true,
                 },
             });
 
-            if (!comment) {
-                throw new Error('COMMENT_NOT_FOUND');
+            if (!answer) {
+                throw new Error('answer_NOT_FOUND');
             }
 
-            const lastRootReply = await tx.reply.findFirst({
+            const lastRootReply = await tx.answerReply.findFirst({
                 where: {
-                    commentId,
+                    answerId,
                     parentReplyId: null,
                 },
                 orderBy: {
@@ -41,10 +41,10 @@ class ReplyService {
 
             const path = segment;
 
-            const reply = await tx.reply.create({
+            const reply = await tx.answerReply.create({
                 data: {
                     content,
-                    commentId,
+                    answerId,
                     path,
                     authorId: userId,
                 },
@@ -65,17 +65,17 @@ class ReplyService {
                 },
             });
 
-            await tx.post.update({
-                where: { id: comment.postId },
+            await tx.question.update({
+                where: { id: answer.questionId },
                 data: {
-                    commentsCount: {
+                    answersCount: {
                         increment: 1,
                     },
                 },
             });
 
-            await tx.comment.update({
-                where: { id: commentId },
+            await tx.answer.update({
+                where: { id: answerId },
                 data: {
                     repliesCount: {
                         increment: 1,
@@ -91,16 +91,16 @@ class ReplyService {
         const MAX_DEPTH = this.MAX_DEPTH;
 
         return await prisma.$transaction(async (tx) => {
-            const parent = await tx.reply.findUnique({
+            const parent = await tx.answerReply.findUnique({
                 where: { id: replyId },
                 select: {
                     id: true,
                     depth: true,
                     path: true,
-                    commentId: true,
-                    comment: {
+                    answerId: true,
+                    answer: {
                         select: {
-                            postId: true,
+                            questionId: true,
                         },
                     },
                 },
@@ -110,8 +110,8 @@ class ReplyService {
                 throw new Error('REPLY_NOT_FOUND');
             }
 
-            if (!parent.comment) {
-                throw new Error('COMMENT_NOT_FOUND');
+            if (!parent.answer) {
+                throw new Error('answer_NOT_FOUND');
             }
 
             const depth = parent.depth + 1;
@@ -120,7 +120,7 @@ class ReplyService {
                 throw new Error('MAX_DEPTH_REACHED');
             }
 
-            const lastChild = await tx.reply.findFirst({
+            const lastChild = await tx.answerReply.findFirst({
                 where: {
                     parentReplyId: replyId,
                 },
@@ -143,10 +143,10 @@ class ReplyService {
 
             const path = parent.path + '.' + segment;
 
-            const reply = await tx.reply.create({
+            const reply = await tx.answerReply.create({
                 data: {
                     content,
-                    commentId: parent.commentId,
+                    answerId: parent.answerId,
                     parentReplyId: replyId,
                     depth,
                     path,
@@ -169,17 +169,17 @@ class ReplyService {
                 },
             });
 
-            await tx.post.update({
-                where: { id: parent.comment.postId },
+            await tx.question.update({
+                where: { id: parent.answer.questionId },
                 data: {
-                    commentsCount: {
+                    answersCount: {
                         increment: 1,
                     },
                 },
             });
 
-            await tx.comment.update({
-                where: { id: parent.commentId },
+            await tx.answer.update({
+                where: { id: parent.answerId },
                 data: {
                     repliesCount: {
                         increment: 1,
@@ -193,16 +193,16 @@ class ReplyService {
 
     async deleteReply(replyId: string, userId: string) {
         return await prisma.$transaction(async (tx) => {
-            const reply = await tx.reply.findUnique({
+            const reply = await tx.answerReply.findUnique({
                 where: { id: replyId },
                 select: {
                     id: true,
                     authorId: true,
                     path: true,
-                    commentId: true,
-                    comment: {
+                    answerId: true,
+                    answer: {
                         select: {
-                            postId: true,
+                            questionId: true,
                         },
                     },
                 },
@@ -216,11 +216,11 @@ class ReplyService {
                 throw new Error('FORBIDDEN');
             }
 
-            if (!reply.comment) {
-                throw new Error('COMMENT_NOT_FOUND');
+            if (!reply.answer) {
+                throw new Error('answer_NOT_FOUND');
             }
 
-            const { count } = await tx.reply.deleteMany({
+            const { count } = await tx.answerReply.deleteMany({
                 where: {
                     path: {
                         startsWith: reply.path,
@@ -228,17 +228,17 @@ class ReplyService {
                 },
             });
 
-            await tx.post.update({
-                where: { id: reply.comment.postId },
+            await tx.question.update({
+                where: { id: reply.answer.questionId },
                 data: {
-                    commentsCount: {
+                    answersCount: {
                         decrement: count,
                     },
                 },
             });
 
-            await tx.comment.update({
-                where: { id: reply.commentId },
+            await tx.answer.update({
+                where: { id: reply.answerId },
                 data: {
                     repliesCount: {
                         decrement: count,
@@ -248,26 +248,23 @@ class ReplyService {
         });
     }
 
-    async getRepliesByCommentId(
-        commentId: string,
-        cursor: string | null = null,
-    ) {
+    async getRepliesByAnswerId(answerId: string, cursor: string | null = null) {
         const pageSize = 5;
 
-        const comment = await prisma.comment.findUnique({
-            where: { id: commentId },
+        const answer = await prisma.answer.findUnique({
+            where: { id: answerId },
             select: {
                 id: true,
             },
         });
 
-        if (!comment) {
-            throw new Error('COMMENT_NOT_FOUND');
+        if (!answer) {
+            throw new Error('answer_NOT_FOUND');
         }
 
-        const replies = await prisma.reply.findMany({
+        const replies = await prisma.answerReply.findMany({
             where: {
-                commentId,
+                answerId,
                 parentReplyId: null,
             },
 
@@ -297,9 +294,10 @@ class ReplyService {
                     },
                 },
 
-                _count: {
+                answerReplies: {
+                    take: 1,
                     select: {
-                        replies: true,
+                        id: true,
                     },
                 },
             },
@@ -307,7 +305,7 @@ class ReplyService {
 
         const result = replies.map((reply) => ({
             id: reply.id,
-            commentId: reply.commentId,
+            answerId: reply.answerId,
             authorId: reply.authorId,
             content: reply.content,
             likesCount: reply.likesCount,
@@ -320,7 +318,7 @@ class ReplyService {
                 avatar: reply.author.avatar,
                 tier: reply.author.tier,
             },
-            hasReplies: reply._count.replies > 0,
+            hasReplies: reply.answerReplies.length > 0,
         }));
 
         const nextCursor =
@@ -336,8 +334,7 @@ class ReplyService {
     async getRepliesByReplyId(replyId: string, cursor: string | null = null) {
         const pageSize = 5;
 
-        // check parent exists
-        const parent = await prisma.reply.findUnique({
+        const parent = await prisma.answerReply.findUnique({
             where: { id: replyId },
             select: { id: true },
         });
@@ -346,7 +343,7 @@ class ReplyService {
             throw new Error('REPLY_NOT_FOUND');
         }
 
-        const replies = await prisma.reply.findMany({
+        const replies = await prisma.answerReply.findMany({
             where: {
                 parentReplyId: replyId,
             },
@@ -377,9 +374,10 @@ class ReplyService {
                     },
                 },
 
-                _count: {
+                answerReplies: {
+                    take: 1,
                     select: {
-                        replies: true,
+                        id: true,
                     },
                 },
             },
@@ -390,7 +388,7 @@ class ReplyService {
 
         const result = replies.map((reply) => ({
             id: reply.id,
-            commentId: reply.commentId,
+            answerId: reply.answerId,
             authorId: reply.authorId,
             content: reply.content,
             likesCount: reply.likesCount,
@@ -403,7 +401,7 @@ class ReplyService {
                 avatar: reply.author.avatar,
                 tier: reply.author.tier,
             },
-            hasReplies: reply._count.replies > 0,
+            hasReplies: reply.answerReplies.length > 0,
         }));
 
         return {

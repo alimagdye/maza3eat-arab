@@ -79,7 +79,9 @@ model User {
   questions   Question[]
   answers     Answer[]
   answerReplies AnswerReply[]
+  questionLikes QuestionLike[]
   answerVotes AnswerVote[]
+  answerReplyLikes AnswerReplyLike[]
 
   sentContactRequests     ContactRequest[] @relation("SentRequests")
   receivedContactRequests ContactRequest[] @relation("ReceivedRequests")
@@ -177,6 +179,7 @@ model Tag {
   normalizedName String @unique
 
   posts PostTag[]
+  questions QuestionTag[]
 }
 
 model PostImage {
@@ -309,6 +312,18 @@ model HomePost {
   @@unique([scope, postId])
 }
 
+model HomeQuestion {
+  id String @id @default(uuid())
+
+  questionId String
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  position Int
+
+  @@unique([position])
+  @@unique([questionId])
+}
+
 //////////////////////////////////////////////////////
 // Q&A SECTION
 //////////////////////////////////////////////////////
@@ -324,14 +339,36 @@ model Question {
 
   status          ContentStatus @default(PENDING)
   rejectionReason String?
-  isDeleted       Boolean       @default(false)
 
+  tags     QuestionTag[]
   answers Answer[]
+  likes QuestionLike[]
+  homeQuestions HomeQuestion[]
+
+  likesCount Int @default(0)
+  answersCount Int @default(0)
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([status])
-  @@index([authorId])
+  @@index([status, createdAt, id])
+  @@index([status, answersCount, id])
+  @@index([authorId, createdAt, id])
+  @@index([titleNormalized])
+}
+
+model QuestionTag {
+  id String @id @default(uuid())
+
+  questionId String
+  tagId String
+
+  name String
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@index([tagId, questionId])
 }
 
 model Answer {
@@ -343,7 +380,8 @@ model Answer {
   author   User   @relation(fields: [authorId], references: [id])
 
   content   String
-  isDeleted Boolean @default(false)
+  totalVoteValue Int @default(0)
+  repliesCount Int @default(0)
 
   votes   AnswerVote[]
   answerReplies AnswerReply[]
@@ -351,7 +389,7 @@ model Answer {
 
   createdAt DateTime @default(now())
 
-  @@index([questionId])
+  @@index([questionId, totalVoteValue, id])
   @@index([authorId])
 }
 
@@ -365,10 +403,12 @@ model AnswerReply {
   parentReply   AnswerReply? @relation("AnswerReplyThread", fields: [parentReplyId], references: [id])
 
   content   String
+  likesCount Int @default(0)
   depth Int @default(0)
   path String
 
   answerReplies       AnswerReply[] @relation("AnswerReplyThread")
+  likes AnswerReplyLike[]
   reports Report[]
 
   createdAt DateTime @default(now())
@@ -376,12 +416,34 @@ model AnswerReply {
   @@index([answerId])
   @@index([parentReplyId])
   @@index([authorId])
+
+  @@index([answerId, path])
+  @@index([path])
+
+  @@index([answerId, createdAt, id])
+  @@index([parentReplyId, createdAt, id])
+
+  @@unique([answerId, path])
+}
+
+model QuestionLike {
+  userId String
+  questionId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, questionId])
+
+  @@index([questionId])
 }
 
 model AnswerVote {
   userId   String
   answerId String
-  value    Int // 1 or -1
+  value Int
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   answer Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
@@ -389,6 +451,21 @@ model AnswerVote {
   createdAt DateTime @default(now())
 
   @@id([userId, answerId])
+
+  @@index([answerId])
+}
+
+model AnswerReplyLike {
+  userId String
+  answerReplyId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answerReply AnswerReply @relation(fields: [answerReplyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, answerReplyId])
+  @@index([answerReplyId])
 }
 
 //////////////////////////////////////////////////////

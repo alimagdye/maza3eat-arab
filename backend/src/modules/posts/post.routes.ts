@@ -38,7 +38,7 @@ router.get(
 router.get(
     '/:postId',
     postRateLimiter.getPostByIdLimiter,
-    postValidation.validateGetPostById,
+    postValidation.validatePostId,
     validate,
     postController.getPostById,
 );
@@ -47,7 +47,7 @@ router.delete(
     '/:postId',
     requireAuth,
     postRateLimiter.deletePostByIdLimiter,
-    postValidation.validateGetPostById,
+    postValidation.validatePostId,
     validate,
     postController.deletePostById,
 );

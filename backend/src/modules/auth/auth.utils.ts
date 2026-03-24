@@ -5,11 +5,11 @@ class AuthUtils {
             {
                 sub: user.id,
                 role: user.role,
-                tierId: user.tierId,
+                type: 'access',
             },
             process.env.JWT_SECRET!,
             {
-                expiresIn: Number(process.env.ACCESS_TOKEN_MAX_AGE) * 1000,
+                expiresIn: Number(process.env.ACCESS_TOKEN_MAX_AGE),
                 issuer: process.env.JWT_ISSUER,
             },
         );
@@ -21,10 +21,10 @@ class AuthUtils {
 
     generateRefreshToken(user: any) {
         const token = jwt.sign(
-            { sub: user.id },
+            { sub: user.id, type: 'refresh' },
             process.env.JWT_REFRESH_SECRET!,
             {
-                expiresIn: Number(process.env.REFRESH_TOKEN_MAX_AGE) * 1000,
+                expiresIn: Number(process.env.REFRESH_TOKEN_MAX_AGE),
                 issuer: process.env.JWT_ISSUER,
             },
         );
