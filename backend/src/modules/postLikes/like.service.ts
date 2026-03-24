@@ -18,6 +18,16 @@ class LikeService {
 
     async unlikePost(userId: string, postId: string) {
         await prisma.$transaction(async (tx) => {
+            // check post exists
+            const post = await tx.post.findUnique({
+                where: { id: postId },
+                select: { id: true },
+            });
+
+            if (!post) {
+                throw new Error('POST_NOT_FOUND');
+            }
+
             const result = await tx.postLike.deleteMany({
                 where: { userId, postId },
             });
@@ -29,8 +39,6 @@ class LikeService {
                         likesCount: { decrement: 1 },
                     },
                 });
-            } else {
-                throw new Error('Like not found');
             }
         });
     }
@@ -52,6 +60,15 @@ class LikeService {
 
     async unlikeComment(userId: string, commentId: string) {
         await prisma.$transaction(async (tx) => {
+            const comment = await tx.comment.findUnique({
+                where: { id: commentId },
+                select: { id: true },
+            });
+
+            if (!comment) {
+                throw new Error('COMMENT_NOT_FOUND');
+            }
+
             const result = await tx.commentLike.deleteMany({
                 where: { userId, commentId },
             });
@@ -63,8 +80,6 @@ class LikeService {
                         likesCount: { decrement: 1 },
                     },
                 });
-            } else {
-                throw new Error('Like not found');
             }
         });
     }
@@ -86,6 +101,16 @@ class LikeService {
 
     async unlikeReply(userId: string, replyId: string) {
         await prisma.$transaction(async (tx) => {
+            // check reply exists
+            const reply = await tx.reply.findUnique({
+                where: { id: replyId },
+                select: { id: true },
+            });
+
+            if (!reply) {
+                throw new Error('REPLY_NOT_FOUND');
+            }
+
             const result = await tx.replyLike.deleteMany({
                 where: { userId, replyId },
             });
@@ -97,8 +122,6 @@ class LikeService {
                         likesCount: { decrement: 1 },
                     },
                 });
-            } else {
-                throw new Error('Like not found');
             }
         });
     }

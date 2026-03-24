@@ -1,5 +1,6 @@
 import authUtils from './auth.utils.js';
 import { prisma } from '../../prisma/client.js';
+import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
@@ -33,30 +34,36 @@ class AuthService {
         return { data: { accessToken, refreshToken } };
     }
 
-    async storeRefreshToken(userId: string, token: string) {
+    async storeRefreshToken(
+        userId: string,
+        token: string,
+        tx?: Prisma.TransactionClient,
+    ) {
+        const db = tx ?? prisma;
+
         const hash = this.hashToken(token);
 
-        await prisma.$transaction(async (tx) => {
+        const run = async (client: typeof db) => {
             // delete expired
-            await tx.refreshToken.deleteMany({
+            await client.refreshToken.deleteMany({
                 where: {
                     userId,
                     expiresAt: { lt: new Date() },
                 },
             });
 
-            const existingTokens = await tx.refreshToken.findMany({
+            const existingTokens = await client.refreshToken.findMany({
                 where: { userId },
                 orderBy: { createdAt: 'asc' },
             });
 
             if (existingTokens.length >= this.MAX_SESSIONS) {
-                await tx.refreshToken.delete({
+                await client.refreshToken.delete({
                     where: { id: existingTokens[0].id },
                 });
             }
 
-            await tx.refreshToken.create({
+            await client.refreshToken.create({
                 data: {
                     token: hash,
                     userId,
@@ -66,7 +73,15 @@ class AuthService {
                     ),
                 },
             });
-        });
+        };
+
+        if (tx) {
+            await run(db);
+        } else {
+            await prisma.$transaction(async (txClient) => {
+                await run(txClient);
+            });
+        }
     }
 
     async deleteRefreshToken(token: string) {
@@ -79,6 +94,7 @@ class AuthService {
 
     async rotateRefreshToken(oldToken: string) {
         let decoded: any;
+
         try {
             decoded = jwt.verify(
                 oldToken,
@@ -88,60 +104,74 @@ class AuthService {
             throw new Error('Invalid session');
         }
 
+        if (decoded.type !== 'refresh') {
+            throw new Error('Invalid token type');
+        }
+
         const hash = this.hashToken(oldToken);
 
-        const storedToken = await prisma.refreshToken.findUnique({
-            where: { token: hash },
-        });
+        const result = await prisma.$transaction(async (tx) => {
+            const storedToken = await tx.refreshToken.findUnique({
+                where: { token: hash },
+            });
 
-        if (!storedToken) {
-            throw new Error('Invalid session');
-        }
+            if (!storedToken) {
+                throw new Error('Invalid session');
+            }
 
-        if (storedToken.expiresAt < new Date()) {
-            await prisma.refreshToken.delete({
+            if (storedToken.expiresAt < new Date()) {
+                await tx.refreshToken.delete({
+                    where: { id: storedToken.id },
+                });
+
+                throw new Error('Session expired');
+            }
+
+            const user = await tx.user.findUnique({
+                where: { id: decoded.sub },
+            });
+
+            if (!user) {
+                throw new Error('Unauthorized');
+            }
+
+            await tx.refreshToken.delete({
                 where: { id: storedToken.id },
             });
-            throw new Error('Session expired');
-        }
 
-        const user = await prisma.user.findUnique({
-            where: { id: decoded.sub },
+            const { accessToken, refreshToken } = this.generateJwt(user).data;
+
+            await this.storeRefreshToken(user.id, refreshToken, tx);
+
+            return { accessToken, refreshToken };
         });
 
-        if (!user) {
-            throw new Error('Unauthorized');
-        }
-
-        // delete old token (rotation)
-        await prisma.refreshToken.delete({
-            where: { id: storedToken.id },
-        });
-
-        const { accessToken, refreshToken } = this.generateJwt(user).data;
-
-        await this.storeRefreshToken(user.id, refreshToken);
-
-        return { data: { accessToken, refreshToken } };
+        return { data: result };
     }
 
     async getUserById(userId: string) {
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            include: { tier: true },
+            select: {
+                name: true,
+                email: true,
+                avatar: true,
+                role: true,
+                tier: {
+                    select: {
+                        name: true,
+                        badgeColor: true,
+                        description: true,
+                    },
+                },
+            },
         });
 
         if (!user) {
             return null;
         }
 
-        return {
-            name: user.name,
-            email: user.email,
-            avatar: user.avatar,
-            role: user.role,
-            tier: user.tier,
-        };
+        return user;
     }
 
     private hashToken(token: string) {

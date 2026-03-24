@@ -5,7 +5,9 @@ class TagController {
     private tagService = TagService;
     getTrendingTags = async (req: Request, res: Response) => {
         try {
-            const trendingTags = await this.tagService.getTrendingTags();
+            const limit = parseInt(req.query.limit as string) || 10;
+            console.log(limit);
+            const trendingTags = await this.tagService.getTrendingTags(limit);
             return res.status(200).json({
                 status: 'success',
                 data: trendingTags,

@@ -10,8 +10,8 @@ const commentValidation: {
         body('content')
             .isString()
             .trim()
-            .isLength({ min: 1, max: 500 })
-            .withMessage('Content must be between 1 and 500 characters'),
+            .isLength({ min: 1, max: 600 })
+            .withMessage('Content must be between 1 and 600 characters'),
     ],
     validateDeleteComment: [
         param('postId').isUUID().withMessage('Invalid post ID'),

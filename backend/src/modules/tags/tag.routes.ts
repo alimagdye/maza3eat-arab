@@ -5,7 +5,12 @@ import tagValidation from './tag.validation.js';
 import validate from '../../middlewares/validateRequest.js';
 const router = Router();
 
-router.get('/tags/trending', tagController.getTrendingTags);
+router.get(
+    '/tags/trending',
+    tagValidation.validateGetTrendingTags,
+    validate,
+    tagController.getTrendingTags,
+);
 
 router.get(
     '/tags/suggest',

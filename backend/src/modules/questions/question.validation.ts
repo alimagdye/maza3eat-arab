@@ -1,12 +1,12 @@
 import { body, param, query, ValidationChain } from 'express-validator';
 
-const postValidation: {
-    validateCreatePost: ValidationChain[];
-    validateGetPosts: ValidationChain[];
-    validatePostId: ValidationChain[];
-    validateGetHomePosts: ValidationChain[];
+const questionValidation: {
+    validateCreateQuestion: ValidationChain[];
+    validateGetQuestions: ValidationChain[];
+    validateQuestionId: ValidationChain[];
+    validateGetPopularQuestions: ValidationChain[];
 } = {
-    validateCreatePost: [
+    validateCreateQuestion: [
         body('title')
             .isString()
             .trim()
@@ -29,14 +29,11 @@ const postValidation: {
             ),
     ],
 
-    validateGetPosts: [
+    validateGetQuestions: [
         query('cursor').optional().isUUID().withMessage('Invalid cursor'),
         query('sort')
             .isIn(['latest', 'popular'])
             .withMessage('Invalid sort option'),
-        query('scope')
-            .isIn(['community', 'admin'])
-            .withMessage('Invalid scope option'),
         query('search')
             .optional()
             .isString()
@@ -45,15 +42,16 @@ const postValidation: {
             .withMessage('Search query must be between 1 and 100 characters'),
     ],
 
-    validatePostId: [
-        param('postId').isUUID().withMessage('Invalid post ID format'),
+    validateQuestionId: [
+        param('questionId').isUUID().withMessage('Invalid question ID format'),
     ],
 
-    validateGetHomePosts: [
-        query('scope')
-            .isIn(['community', 'admin'])
-            .withMessage('Invalid scope option'),
+    validateGetPopularQuestions: [
+        query('limit')
+            .optional()
+            .isInt({ min: 1, max: 10 })
+            .withMessage('Limit must be an integer between 1 and 10'),
     ],
 };
 
-export default postValidation;
+export default questionValidation;
