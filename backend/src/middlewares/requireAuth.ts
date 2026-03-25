@@ -38,14 +38,16 @@ export const requireAuth = (
 
         return next();
     } catch (error: any) {
-        if (error.name === 'TokenExpiredError') {
+        console.error(error);
+
+        if (error instanceof jwt.TokenExpiredError) {
             return res.status(401).json({
                 status: 'fail',
                 message: 'ACCESS_TOKEN_EXPIRED',
             });
         }
 
-        if (error.name === 'JsonWebTokenError') {
+        if (error instanceof jwt.JsonWebTokenError) {
             return res.status(401).json({
                 status: 'fail',
                 message: 'INVALID_TOKEN',

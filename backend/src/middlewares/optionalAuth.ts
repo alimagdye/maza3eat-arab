@@ -29,14 +29,14 @@ export const optionalAuth = (
 
         return next();
     } catch (error: any) {
-        if (error.name === 'TokenExpiredError') {
+        if (error instanceof jwt.TokenExpiredError) {
             return res.status(401).json({
                 status: 'fail',
                 message: 'ACCESS_TOKEN_EXPIRED',
             });
         }
 
-        if (error.name === 'JsonWebTokenError') {
+        if (error instanceof jwt.JsonWebTokenError) {
             return next();
         }
 
