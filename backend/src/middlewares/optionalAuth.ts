@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 
-export const requireAuth = (
+export const optionalAuth = (
     req: Request,
     res: Response,
     next: NextFunction,
@@ -9,17 +9,11 @@ export const requireAuth = (
     const token = req.cookies?.accessToken;
 
     if (!token || typeof token !== 'string') {
-        return res.status(401).json({
-            status: 'fail',
-            message: 'Unauthorized',
-        });
+        return next(); // guest
     }
 
     if (!token.includes('.')) {
-        return res.status(401).json({
-            status: 'fail',
-            message: 'Malformed token',
-        });
+        return next(); // malformed -> ignore
     }
 
     try {
@@ -28,19 +22,13 @@ export const requireAuth = (
         }) as any;
 
         if (decoded.type && decoded.type !== 'access') {
-            return res.status(401).json({
-                status: 'fail',
-                message: 'Invalid token type',
-            });
+            return next();
         }
 
         req.user = decoded;
-
-        next();
     } catch (error) {
-        return res.status(401).json({
-            status: 'fail',
-            message: 'Invalid token',
-        });
+        // ignore invalid token
     }
+
+    next();
 };

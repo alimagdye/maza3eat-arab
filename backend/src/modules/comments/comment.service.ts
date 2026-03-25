@@ -48,7 +48,11 @@ class CommentService {
         });
     }
 
-    async getCommentsByPostId(postId: string, cursor: string | null = null) {
+    async getCommentsByPostId(
+        postId: string,
+        cursor: string | null = null,
+        userId: string | null = null,
+    ) {
         const pageSize = 5;
 
         const post = await prisma.post.findFirst({
@@ -72,9 +76,7 @@ class CommentService {
                 cursor: { id: cursor },
             }),
 
-            orderBy: {
-                createdAt: 'desc',
-            },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
 
             include: {
                 author: {
@@ -90,6 +92,12 @@ class CommentService {
                         },
                     },
                 },
+                ...(userId && {
+                    likes: {
+                        where: { userId },
+                        select: { userId: true },
+                    },
+                }),
             },
         });
 
@@ -98,8 +106,33 @@ class CommentService {
                 ? comments[comments.length - 1].id
                 : null;
 
+        const result = comments.map((comment) => {
+            const likedByMe =
+                userId && comment.likes ? comment.likes.length > 0 : false;
+
+            return {
+                id: comment.id,
+                postId: comment.postId,
+                authorId: comment.authorId,
+                content: comment.content,
+
+                likesCount: comment.likesCount,
+                repliesCount: comment.repliesCount,
+                createdAt: comment.createdAt,
+
+                author: {
+                    id: comment.author.id,
+                    name: comment.author.name,
+                    avatar: comment.author.avatar,
+                    tier: comment.author.tier,
+                },
+
+                likedByMe,
+            };
+        });
+
         return {
-            comments,
+            comments: result,
             nextCursor,
             hasMore: comments.length === pageSize,
         };

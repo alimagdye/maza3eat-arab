@@ -46,10 +46,12 @@ class AnswerController {
         try {
             const { questionId } = req.params as { questionId: string };
             const cursor = req.query.cursor as string | null;
+            const userId = req.user ? req.user.sub : null;
 
             const data = await this.answerService.getAnswersByQuestionId(
                 questionId,
                 cursor,
+                userId,
             );
 
             res.json({
