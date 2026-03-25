@@ -262,7 +262,7 @@ class PostService {
         };
     }
 
-    async getPostById(postId: string) {
+    async getPostById(postId: string, userId: string | null) {
         const post = await prisma.post.findFirst({
             where: { id: postId, status: 'APPROVED' },
             select: {
@@ -297,11 +297,18 @@ class PostService {
                     },
                 },
                 commentsCount: true,
+                ...(userId && {
+                    likes: {
+                        where: { userId },
+                        select: { userId: true },
+                    },
+                }),
             },
         });
         if (!post) {
             throw new Error('POST_NOT_FOUND');
         }
+        const likedByMe = userId && post.likes ? post.likes.length > 0 : false;
         return {
             title: post?.title,
             content: post?.content,
@@ -316,6 +323,7 @@ class PostService {
             tags: post?.tags,
             likesCount: post?.likesCount,
             commentsCount: post?.commentsCount,
+            likedByMe,
         };
     }
 

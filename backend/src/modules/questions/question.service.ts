@@ -213,7 +213,7 @@ class QuestionService {
         };
     }
 
-    async getQuestionById(questionId: string) {
+    async getQuestionById(questionId: string, userId: string | null = null) {
         const question = await prisma.question.findFirst({
             where: { id: questionId, status: 'APPROVED' },
             select: {
@@ -240,11 +240,21 @@ class QuestionService {
                     },
                 },
                 answersCount: true,
+                ...(userId && {
+                    likes: {
+                        where: { userId },
+                        select: { userId: true },
+                    },
+                }),
             },
         });
         if (!question) {
             throw new Error('question_NOT_FOUND');
         }
+
+        const likedByMe =
+            userId && 'likes' in question ? question.likes.length > 0 : false;
+
         return {
             title: question?.title,
             content: question?.content,
@@ -258,6 +268,7 @@ class QuestionService {
             tags: question?.tags,
             likesCount: question?.likesCount,
             answersCount: question?.answersCount,
+            likedByMe,
         };
     }
 

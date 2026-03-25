@@ -83,9 +83,10 @@ class PostController {
 
     getPostById = async (req: Request, res: Response) => {
         const { postId } = req.params as { postId: string };
+        const userId = req.user ? req.user.sub : null;
 
         try {
-            const post = await this.postService.getPostById(postId);
+            const post = await this.postService.getPostById(postId, userId);
             if (!post) {
                 return res
                     .status(404)

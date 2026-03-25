@@ -46,10 +46,12 @@ class CommentController {
         try {
             const { postId } = req.params as { postId: string };
             const cursor = req.query.cursor as string | null;
+            const userId = req.user ? req.user.sub : null;
 
             const data = await this.commentService.getCommentsByPostId(
                 postId,
                 cursor,
+                userId,
             );
 
             res.json({

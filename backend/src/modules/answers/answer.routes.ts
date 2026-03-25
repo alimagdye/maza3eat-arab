@@ -4,6 +4,7 @@ import { requireAuth } from '../../middlewares/requireAuth.js';
 import answerValidation from './answer.validation.js';
 import validate from '../../middlewares/validateRequest.js';
 import answerRateLimiter from './answer.rateLimiter.js';
+import { optionalAuth } from '../../middlewares/optionalAuth.js';
 
 const router = Router({ mergeParams: true });
 
@@ -18,6 +19,7 @@ router.post(
 
 router.get(
     '/:questionId/answers',
+    optionalAuth,
     answerRateLimiter.getAnswersByQuestionId,
     answerValidation.validateGetAnswersByQuestionId,
     validate,

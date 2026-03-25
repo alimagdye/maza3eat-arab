@@ -251,6 +251,7 @@ class ReplyService {
     async getRepliesByCommentId(
         commentId: string,
         cursor: string | null = null,
+        userId: string | null = null,
     ) {
         const pageSize = 5;
 
@@ -278,9 +279,7 @@ class ReplyService {
                 cursor: { id: cursor },
             }),
 
-            orderBy: {
-                createdAt: 'asc',
-            },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
 
             include: {
                 author: {
@@ -303,26 +302,38 @@ class ReplyService {
                         id: true,
                     },
                 },
+
+                ...(userId && {
+                    likes: {
+                        where: { userId },
+                        select: { userId: true },
+                    },
+                }),
             },
         });
 
-        const result = replies.map((reply) => ({
-            id: reply.id,
-            commentId: reply.commentId,
-            authorId: reply.authorId,
-            content: reply.content,
-            likesCount: reply.likesCount,
-            depth: reply.depth,
-            path: reply.path,
-            createdAt: reply.createdAt,
-            author: {
-                id: reply.author.id,
-                name: reply.author.name,
-                avatar: reply.author.avatar,
-                tier: reply.author.tier,
-            },
-            hasReplies: reply.replies.length > 0,
-        }));
+        const result = replies.map((reply) => {
+            const likedByMe =
+                userId && reply.likes ? reply.likes.length > 0 : false;
+            return {
+                id: reply.id,
+                commentId: reply.commentId,
+                authorId: reply.authorId,
+                content: reply.content,
+                likesCount: reply.likesCount,
+                depth: reply.depth,
+                path: reply.path,
+                createdAt: reply.createdAt,
+                author: {
+                    id: reply.author.id,
+                    name: reply.author.name,
+                    avatar: reply.author.avatar,
+                    tier: reply.author.tier,
+                },
+                hasReplies: reply.replies.length > 0,
+                likedByMe,
+            };
+        });
 
         const nextCursor =
             replies.length === pageSize ? replies[replies.length - 1].id : null;
@@ -334,7 +345,11 @@ class ReplyService {
         };
     }
 
-    async getRepliesByReplyId(replyId: string, cursor: string | null = null) {
+    async getRepliesByReplyId(
+        replyId: string,
+        cursor: string | null = null,
+        userId: string | null = null,
+    ) {
         const pageSize = 5;
 
         // check parent exists
@@ -359,9 +374,7 @@ class ReplyService {
                 cursor: { id: cursor },
             }),
 
-            orderBy: {
-                createdAt: 'asc',
-            },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
 
             include: {
                 author: {
@@ -384,29 +397,42 @@ class ReplyService {
                         id: true,
                     },
                 },
+
+                ...(userId && {
+                    likes: {
+                        where: { userId },
+                        select: { userId: true },
+                    },
+                }),
             },
         });
 
         const nextCursor =
             replies.length === pageSize ? replies[replies.length - 1].id : null;
 
-        const result = replies.map((reply) => ({
-            id: reply.id,
-            commentId: reply.commentId,
-            authorId: reply.authorId,
-            content: reply.content,
-            likesCount: reply.likesCount,
-            depth: reply.depth,
-            path: reply.path,
-            createdAt: reply.createdAt,
-            author: {
-                id: reply.author.id,
-                name: reply.author.name,
-                avatar: reply.author.avatar,
-                tier: reply.author.tier,
-            },
-            hasReplies: reply.replies.length > 0,
-        }));
+        const result = replies.map((reply) => {
+            const likedByMe =
+                userId && reply.likes ? reply.likes.length > 0 : false;
+
+            return {
+                id: reply.id,
+                commentId: reply.commentId,
+                authorId: reply.authorId,
+                content: reply.content,
+                likesCount: reply.likesCount,
+                depth: reply.depth,
+                path: reply.path,
+                createdAt: reply.createdAt,
+                author: {
+                    id: reply.author.id,
+                    name: reply.author.name,
+                    avatar: reply.author.avatar,
+                    tier: reply.author.tier,
+                },
+                hasReplies: reply.replies.length > 0,
+                likedByMe,
+            };
+        });
 
         return {
             replies: result,

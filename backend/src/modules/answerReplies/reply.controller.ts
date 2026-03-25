@@ -113,11 +113,13 @@ class ReplyController {
     getRepliesByAnswerId = async (req: Request, res: Response) => {
         const { answerId } = req.params as { answerId: string };
         const cursor = (req.query.cursor as string) || null;
+        const userId = req.user ? req.user.sub : null;
 
         try {
             const result = await this.replyService.getRepliesByAnswerId(
                 answerId,
                 cursor,
+                userId,
             );
 
             res.json({
@@ -144,11 +146,13 @@ class ReplyController {
     getRepliesByReplyId = async (req: Request, res: Response) => {
         const { replyId } = req.params as { replyId: string };
         const cursor = (req.query.cursor as string) || null;
+        const userId = req.user ? req.user.sub : null;
 
         try {
             const result = await this.replyService.getRepliesByReplyId(
                 replyId,
                 cursor,
+                userId,
             );
 
             res.json({

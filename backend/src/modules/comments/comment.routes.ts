@@ -4,6 +4,7 @@ import { requireAuth } from '../../middlewares/requireAuth.js';
 import commentValidation from './comment.validation.js';
 import validate from '../../middlewares/validateRequest.js';
 import commentRateLimiter from './comment.rateLimiter.js';
+import { optionalAuth } from '../../middlewares/optionalAuth.js';
 
 const router = Router({ mergeParams: true });
 
@@ -18,6 +19,7 @@ router.post(
 
 router.get(
     '/:postId/comments',
+    optionalAuth,
     commentRateLimiter.getCommentsByPostId,
     commentValidation.validateGetCommentsByPostId,
     validate,

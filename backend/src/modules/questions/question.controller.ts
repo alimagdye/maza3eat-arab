@@ -57,10 +57,11 @@ class QuestionController {
 
     getQuestionById = async (req: Request, res: Response) => {
         const { questionId } = req.params as { questionId: string };
+        const userId = req.user ? req.user.sub : null;
 
         try {
             const question =
-                await this.questionService.getQuestionById(questionId);
+                await this.questionService.getQuestionById(questionId, userId);
             if (!question) {
                 return res
                     .status(404)

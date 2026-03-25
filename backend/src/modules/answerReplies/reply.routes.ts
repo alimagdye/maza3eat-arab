@@ -4,6 +4,7 @@ import { requireAuth } from '../../middlewares/requireAuth.js';
 import replyRateLimiter from './reply.rateLimiter.js';
 import replyValidation from './reply.validation.js';
 import validate from '../../middlewares/validateRequest.js';
+import { optionalAuth } from '../../middlewares/optionalAuth.js';
 
 const router = Router();
 
@@ -36,6 +37,7 @@ router.delete(
 
 router.get(
     '/answers/:answerId/replies',
+    optionalAuth,
     replyRateLimiter.getMoreRepliesLimiter,
     replyValidation.validateGetRepliesByAnswerId,
     validate,
@@ -44,6 +46,7 @@ router.get(
 
 router.get(
     '/answer-replies/:replyId/replies',
+    optionalAuth,
     replyRateLimiter.getMoreRepliesLimiter,
     replyValidation.validateGetRepliesByReplyId,
     validate,

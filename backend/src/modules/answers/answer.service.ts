@@ -48,7 +48,11 @@ class AnswerService {
         });
     }
 
-    async getAnswersByQuestionId(questionId: string, cursor: string | null = null) {
+    async getAnswersByQuestionId(
+        questionId: string,
+        cursor: string | null = null,
+        userId: string | null = null,
+    ) {
         const pageSize = 5;
 
         const question = await prisma.question.findFirst({
@@ -72,9 +76,7 @@ class AnswerService {
                 cursor: { id: cursor },
             }),
 
-            orderBy: {
-                totalVoteValue: 'desc',
-            },
+            orderBy: [{ totalVoteValue: 'desc' }, { id: 'desc' }],
 
             include: {
                 author: {
@@ -90,22 +92,59 @@ class AnswerService {
                         },
                     },
                 },
+                ...(userId && {
+                    votes: {
+                        where: { userId },
+                        select: { value: true },
+                    },
+                }),
             },
         });
 
         const nextCursor =
-            answers.length === pageSize
-                ? answers[answers.length - 1].id
-                : null;
+            answers.length === pageSize ? answers[answers.length - 1].id : null;
+
+        const result = answers.map((answer) => {
+            let myVote = 0;
+
+            if (userId && answer.votes) {
+                myVote = answer.votes[0]?.value ?? 0;
+            }
+
+            return {
+                id: answer.id,
+                questionId: answer.questionId,
+                authorId: answer.authorId,
+                content: answer.content,
+
+                totalVoteValue: answer.totalVoteValue,
+                repliesCount: answer.repliesCount,
+
+                createdAt: answer.createdAt,
+
+                author: {
+                    id: answer.author.id,
+                    name: answer.author.name,
+                    avatar: answer.author.avatar,
+                    tier: answer.author.tier,
+                },
+
+                myVote,
+            };
+        });
 
         return {
-            answers,
+            answers: result,
             nextCursor,
             hasMore: answers.length === pageSize,
         };
     }
 
-    async deleteAnswerById(answerId: string, questionId: string, userId: string) {
+    async deleteAnswerById(
+        answerId: string,
+        questionId: string,
+        userId: string,
+    ) {
         return await prisma.$transaction(async (tx) => {
             const answer = await tx.answer.findUnique({
                 where: { id: answerId },

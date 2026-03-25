@@ -6,6 +6,7 @@ import validate from '../../middlewares/validateRequest.js';
 import { requireAuth } from '../../middlewares/requireAuth.js';
 import questionRateLimiter from './question.rateLimiter.js';
 import answerRoutes from '../answers/answer.routes.js';
+import { optionalAuth } from '../../middlewares/optionalAuth.js';
 
 const router = Router();
 
@@ -22,6 +23,7 @@ router.get('/home', questionController.getHomeQuestions);
 
 router.get(
     '/',
+    optionalAuth,
     questionRateLimiter.getQuestionsLimiter,
     questionValidation.validateGetQuestions,
     validate,
@@ -37,6 +39,7 @@ router.get(
 
 router.get(
     '/:questionId',
+    optionalAuth,
     questionRateLimiter.getQuestionByIdLimiter,
     questionValidation.validateQuestionId,
     validate,

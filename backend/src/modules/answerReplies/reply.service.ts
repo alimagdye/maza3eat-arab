@@ -248,7 +248,11 @@ class ReplyService {
         });
     }
 
-    async getRepliesByAnswerId(answerId: string, cursor: string | null = null) {
+    async getRepliesByAnswerId(
+        answerId: string,
+        cursor: string | null = null,
+        userId: string | null = null,
+    ) {
         const pageSize = 5;
 
         const answer = await prisma.answer.findUnique({
@@ -275,9 +279,7 @@ class ReplyService {
                 cursor: { id: cursor },
             }),
 
-            orderBy: {
-                createdAt: 'asc',
-            },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
 
             include: {
                 author: {
@@ -300,26 +302,39 @@ class ReplyService {
                         id: true,
                     },
                 },
+
+                ...(userId && {
+                    likes: {
+                        where: { userId },
+                        select: { userId: true },
+                    },
+                }),
             },
         });
 
-        const result = replies.map((reply) => ({
-            id: reply.id,
-            answerId: reply.answerId,
-            authorId: reply.authorId,
-            content: reply.content,
-            likesCount: reply.likesCount,
-            depth: reply.depth,
-            path: reply.path,
-            createdAt: reply.createdAt,
-            author: {
-                id: reply.author.id,
-                name: reply.author.name,
-                avatar: reply.author.avatar,
-                tier: reply.author.tier,
-            },
-            hasReplies: reply.answerReplies.length > 0,
-        }));
+        const result = replies.map((reply) => {
+            const likedByMe =
+                userId && reply.likes ? reply.likes.length > 0 : false;
+
+            return {
+                id: reply.id,
+                answerId: reply.answerId,
+                authorId: reply.authorId,
+                content: reply.content,
+                likesCount: reply.likesCount,
+                depth: reply.depth,
+                path: reply.path,
+                createdAt: reply.createdAt,
+                author: {
+                    id: reply.author.id,
+                    name: reply.author.name,
+                    avatar: reply.author.avatar,
+                    tier: reply.author.tier,
+                },
+                hasReplies: reply.answerReplies.length > 0,
+                likedByMe,
+            };
+        });
 
         const nextCursor =
             replies.length === pageSize ? replies[replies.length - 1].id : null;
@@ -331,7 +346,11 @@ class ReplyService {
         };
     }
 
-    async getRepliesByReplyId(replyId: string, cursor: string | null = null) {
+    async getRepliesByReplyId(
+        replyId: string,
+        cursor: string | null = null,
+        userId: string | null = null,
+    ) {
         const pageSize = 5;
 
         const parent = await prisma.answerReply.findUnique({
@@ -355,9 +374,7 @@ class ReplyService {
                 cursor: { id: cursor },
             }),
 
-            orderBy: {
-                createdAt: 'asc',
-            },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
 
             include: {
                 author: {
@@ -380,29 +397,42 @@ class ReplyService {
                         id: true,
                     },
                 },
+
+                ...(userId && {
+                    likes: {
+                        where: { userId },
+                        select: { userId: true },
+                    },
+                }),
             },
         });
 
         const nextCursor =
             replies.length === pageSize ? replies[replies.length - 1].id : null;
 
-        const result = replies.map((reply) => ({
-            id: reply.id,
-            answerId: reply.answerId,
-            authorId: reply.authorId,
-            content: reply.content,
-            likesCount: reply.likesCount,
-            depth: reply.depth,
-            path: reply.path,
-            createdAt: reply.createdAt,
-            author: {
-                id: reply.author.id,
-                name: reply.author.name,
-                avatar: reply.author.avatar,
-                tier: reply.author.tier,
-            },
-            hasReplies: reply.answerReplies.length > 0,
-        }));
+        const result = replies.map((reply) => {
+            const likedByMe =
+                userId && reply.likes ? reply.likes.length > 0 : false;
+
+            return {
+                id: reply.id,
+                answerId: reply.answerId,
+                authorId: reply.authorId,
+                content: reply.content,
+                likesCount: reply.likesCount,
+                depth: reply.depth,
+                path: reply.path,
+                createdAt: reply.createdAt,
+                author: {
+                    id: reply.author.id,
+                    name: reply.author.name,
+                    avatar: reply.author.avatar,
+                    tier: reply.author.tier,
+                },
+                hasReplies: reply.answerReplies.length > 0,
+                likedByMe,
+            };
+        });
 
         return {
             replies: result,
