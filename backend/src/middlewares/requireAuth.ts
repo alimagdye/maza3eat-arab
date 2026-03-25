@@ -11,14 +11,14 @@ export const requireAuth = (
     if (!token || typeof token !== 'string') {
         return res.status(401).json({
             status: 'fail',
-            message: 'Unauthorized',
+            message: 'UNAUTHORIZED',
         });
     }
 
     if (!token.includes('.')) {
         return res.status(401).json({
             status: 'fail',
-            message: 'Malformed token',
+            message: 'MALFORMED_TOKEN',
         });
     }
 
@@ -30,17 +30,31 @@ export const requireAuth = (
         if (decoded.type && decoded.type !== 'access') {
             return res.status(401).json({
                 status: 'fail',
-                message: 'Invalid token type',
+                message: 'INVALID_TOKEN_TYPE',
             });
         }
 
         req.user = decoded;
 
-        next();
-    } catch (error) {
+        return next();
+    } catch (error: any) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                status: 'fail',
+                message: 'ACCESS_TOKEN_EXPIRED',
+            });
+        }
+
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({
+                status: 'fail',
+                message: 'INVALID_TOKEN',
+            });
+        }
+
         return res.status(401).json({
             status: 'fail',
-            message: 'Invalid token',
+            message: 'AUTH_FAILED',
         });
     }
 };

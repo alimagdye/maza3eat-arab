@@ -13,23 +13,39 @@ class AuthController {
     };
 
     logout = async (req: Request, res: Response) => {
-        const refreshToken = req.cookies.refreshToken;
-        console.log(refreshToken);
-        if (!refreshToken)
-            return res.status(400).json({ message: 'No refresh token' });
+        const refreshToken = req.cookies?.refreshToken;
 
-        await this.authService.deleteRefreshToken(refreshToken);
+        try {
+            if (refreshToken) {
+                await this.authService.deleteRefreshToken(refreshToken);
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
 
-        res.clearCookie('accessToken');
-        res.clearCookie('refreshToken');
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        } as const;
 
-        return res.status(200).json({ status: 'success' });
+        res.clearCookie('accessToken', cookieOptions);
+        res.clearCookie('refreshToken', cookieOptions);
+
+        return res.status(200).json({
+            status: 'success',
+        });
     };
 
     refresh = async (req: Request, res: Response) => {
         const refreshToken = req.cookies.refreshToken;
-        if (!refreshToken)
-            return res.status(401).json({ message: 'Unauthorized' });
+
+        if (!refreshToken) {
+            return res.status(401).json({
+                status: 'fail',
+                message: 'NO_REFRESH_TOKEN',
+            });
+        }
 
         try {
             const tokens =
@@ -42,6 +58,7 @@ class AuthController {
                     process.env.NODE_ENV === 'production' ? 'none' : 'lax',
                 maxAge: Number(process.env.ACCESS_TOKEN_MAX_AGE) * 1000,
             });
+
             res.cookie('refreshToken', tokens.data.refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
@@ -50,10 +67,29 @@ class AuthController {
                 maxAge: Number(process.env.REFRESH_TOKEN_MAX_AGE) * 1000,
             });
 
-            return res.status(200).json({ status: 'success' });
-        } catch (error) {
-            console.error(error);
-            return res.status(401).json({ message: 'Invalid session' });
+            return res.status(200).json({
+                status: 'success',
+            });
+        } catch (error: any) {
+            console.error('Refresh error:', error);
+
+            if (
+                error.message === 'REFRESH_TOKEN_EXPIRED' ||
+                error.message === 'SESSION_NOT_FOUND' ||
+                error.message === 'INVALID_REFRESH_TOKEN' ||
+                error.message === 'INVALID_TOKEN_TYPE' ||
+                error.message === 'UNAUTHORIZED'
+            ) {
+                return res.status(401).json({
+                    status: 'fail',
+                    message: error.message,
+                });
+            }
+
+            return res.status(500).json({
+                status: 'error',
+                message: 'Internal server error',
+            });
         }
     };
 }
