@@ -84,12 +84,18 @@ class AuthService {
         }
     }
 
-    async deleteRefreshToken(token: string) {
-        const hash = this.hashToken(token);
+    async deleteRefreshToken(token?: string) {
+        try {
+            if (!token) return;
 
-        await prisma.refreshToken.deleteMany({
-            where: { token: hash },
-        });
+            const hash = this.hashToken(token);
+
+            await prisma.refreshToken.deleteMany({
+                where: { token: hash },
+            });
+        } catch (error) {
+            console.error('deleteRefreshToken error:', error);
+        }
     }
 
     async rotateRefreshToken(oldToken: string) {
@@ -100,23 +106,31 @@ class AuthService {
                 oldToken,
                 process.env.JWT_REFRESH_SECRET!,
             ) as any;
-        } catch (error) {
-            throw new Error('Invalid session');
+        } catch (error: any) {
+            if (error.name === 'TokenExpiredError') {
+                throw new Error('REFRESH_TOKEN_EXPIRED');
+            }
+
+            if (error.name === 'JsonWebTokenError') {
+                throw new Error('INVALID_REFRESH_TOKEN');
+            }
+
+            throw error;
         }
 
         if (decoded.type !== 'refresh') {
-            throw new Error('Invalid token type');
+            throw new Error('INVALID_TOKEN_TYPE');
         }
 
         const hash = this.hashToken(oldToken);
 
-        const result = await prisma.$transaction(async (tx) => {
+        return prisma.$transaction(async (tx) => {
             const storedToken = await tx.refreshToken.findUnique({
                 where: { token: hash },
             });
 
             if (!storedToken) {
-                throw new Error('Invalid session');
+                throw new Error('SESSION_NOT_FOUND');
             }
 
             if (storedToken.expiresAt < new Date()) {
@@ -124,7 +138,7 @@ class AuthService {
                     where: { id: storedToken.id },
                 });
 
-                throw new Error('Session expired');
+                throw new Error('REFRESH_TOKEN_EXPIRED');
             }
 
             const user = await tx.user.findUnique({
@@ -132,7 +146,7 @@ class AuthService {
             });
 
             if (!user) {
-                throw new Error('Unauthorized');
+                throw new Error('UNAUTHORIZED');
             }
 
             await tx.refreshToken.delete({
@@ -143,10 +157,8 @@ class AuthService {
 
             await this.storeRefreshToken(user.id, refreshToken, tx);
 
-            return { accessToken, refreshToken };
+            return { data: { accessToken, refreshToken } };
         });
-
-        return { data: result };
     }
 
     async getUserById(userId: string) {

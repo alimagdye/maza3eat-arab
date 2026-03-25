@@ -9,11 +9,11 @@ export const optionalAuth = (
     const token = req.cookies?.accessToken;
 
     if (!token || typeof token !== 'string') {
-        return next(); // guest
+        return next();
     }
 
     if (!token.includes('.')) {
-        return next(); // malformed -> ignore
+        return next();
     }
 
     try {
@@ -26,9 +26,20 @@ export const optionalAuth = (
         }
 
         req.user = decoded;
-    } catch (error) {
-        // ignore invalid token
-    }
 
-    next();
+        return next();
+    } catch (error: any) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                status: 'fail',
+                message: 'ACCESS_TOKEN_EXPIRED',
+            });
+        }
+
+        if (error.name === 'JsonWebTokenError') {
+            return next();
+        }
+
+        return next();
+    }
 };
