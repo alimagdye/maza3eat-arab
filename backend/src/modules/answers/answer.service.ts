@@ -1,4 +1,4 @@
-import { prisma } from '../../prisma/client.js';
+import { prisma } from '../../lib/client.js';
 
 class AnswerService {
     async createAnswer(questionId: string, userId: string, content: string) {

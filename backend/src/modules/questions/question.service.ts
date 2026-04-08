@@ -1,6 +1,5 @@
-import { prisma } from '../../prisma/client.js';
+import { prisma } from '../../lib/client.js';
 import { normalizeArabic } from '../../utils/normalizeArabic.js';
-import { HomeScope } from '@prisma/client/wasm.js';
 
 class QuestionService {
     async createQuestion(

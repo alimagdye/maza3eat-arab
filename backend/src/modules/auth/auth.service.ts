@@ -1,5 +1,5 @@
 import authUtils from './auth.utils.js';
-import { prisma } from '../../prisma/client.js';
+import { prisma } from '../../lib/client.js';
 import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
