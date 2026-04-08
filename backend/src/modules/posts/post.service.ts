@@ -1,8 +1,7 @@
-import { prisma } from '../../prisma/client.js';
+import { prisma } from '../../lib/client.js';
 import { normalizeArabic } from '../../utils/normalizeArabic.js';
 import postUtils from './post.utils.js';
-import { HomeScope } from '@prisma/client/wasm.js';
-
+import { HomeScope } from '@prisma/client';
 class PostService {
     async createPost(
         title: string,

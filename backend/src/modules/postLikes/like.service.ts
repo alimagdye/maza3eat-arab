@@ -1,4 +1,4 @@
-import { prisma } from '../../prisma/client.js';
+import { prisma } from '../../lib/client.js';
 
 class LikeService {
     async likePost(userId: string, postId: string) {

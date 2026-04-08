@@ -1,4 +1,4 @@
-import { prisma } from '../../prisma/client.js';
+import { prisma } from '../../lib/client.js';
 import replyUtils from './reply.utils.js';
 
 class ReplyService {

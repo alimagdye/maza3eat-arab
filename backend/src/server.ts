@@ -4,7 +4,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import { prisma } from './prisma/client.js';
+import { prisma } from './lib/client.js';
 // -----------------------------
 // Initialize
 // -----------------------------
