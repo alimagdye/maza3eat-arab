@@ -69,11 +69,11 @@ import tagRoutes from './modules/tags/tag.routes.js';
 import questionRoutes from './modules/questions/question.routes.js';
 import answerReplyRoutes from './modules/answerReplies/reply.routes.js';
 import answerLikeRoutes from './modules/questionLikes/like.routes.js';
+import adRoutes from "./modules/ads/ad.routes.js";
 // import userRoutes from "./modules/users/routes";
 // import reportRoutes from "./modules/reports/routes";
 // import contactRoutes from "./modules/contact/routes";
 // import notificationRoutes from "./modules/notifications/routes";
-// import adRoutes from "./modules/ads/routes";
 // import adminRoutes from "./modules/admin/routes";
 
 app.use('/api/v1/auth', authRoutes);
@@ -84,11 +84,11 @@ app.use('/api/v1', tagRoutes);
 app.use('/api/v1/questions', questionRoutes);
 app.use('/api/v1', answerReplyRoutes);
 app.use('/api/v1', answerLikeRoutes);
+app.use("/api/v1/ads", adRoutes);
 // app.use("/api/v1/users", userRoutes);
 // app.use("/api/v1/reports", reportRoutes);
 // app.use("/api/v1/contact-requests", contactRoutes);
 // app.use("/api/v1/notifications", notificationRoutes);
-// app.use("/api/v1/ads", adRoutes);
 // app.use("/api/v1/admin", adminRoutes);
 
 // -----------------------------

@@ -55,6 +55,12 @@ enum HomeScope {
   COMMUNITY
 }
 
+enum AdPosition {
+  TOP
+  MIDDLE
+  BOTTOM
+}
+
 //////////////////////////////////////////////////////
 // MODELS
 //////////////////////////////////////////////////////
@@ -295,7 +301,7 @@ model ReplyLike {
 }
 
 //////////////////////////////////////////////////////
-// HOME POSTS SECTION
+// HOME SECTION
 //////////////////////////////////////////////////////
 
 model HomePost {
@@ -322,6 +328,17 @@ model HomeQuestion {
 
   @@unique([position])
   @@unique([questionId])
+}
+
+model HomeAd {
+  id String @id @default(uuid())
+
+  adId String
+  position AdPosition
+
+  @@unique([position])
+  ad Ad @relation(fields: [adId], references: [id], onDelete: Cascade)
+  @@index([adId])
 }
 
 //////////////////////////////////////////////////////
@@ -563,10 +580,18 @@ model Notification {
 model Ad {
   id       String  @id @default(uuid())
   title    String
+  text     String
   imageUrl String
+  imageName String
   link     String
-  isActive Boolean @default(true)
+  buttonText String
+  amountPaid Float
+  priority Int
+  homeAds    HomeAd[]
 
+  isActive Boolean @default(true)
+  expireAt DateTime
+  @@index([isActive, expireAt])
   createdAt DateTime @default(now())
 }
 

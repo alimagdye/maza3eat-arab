@@ -1,8 +1,16 @@
 import { prisma } from '../../lib/client.js';
 import { normalizeArabic } from '../../utils/normalizeArabic.js';
 import postUtils from './post.utils.js';
-import { HomeScope } from '@prisma/client';
+import { HomeScope, HomeScopeType, ScopeCacheState } from '../../types/post.js';
+
 class PostService {
+    private homePostsCache: Record<HomeScopeType, ScopeCacheState> = {
+        community: { data: [], expiresAt: 0, refreshPromise: null },
+        admin: { data: [], expiresAt: 0, refreshPromise: null },
+    };
+
+    private readonly HOME_POSTS_TTL = 1000 * 60 * 60; // 1 Hour
+
     async createPost(
         title: string,
         content: string,
@@ -128,7 +136,7 @@ class PostService {
         cursor: string | null = null,
         search: string = '',
     ) {
-        const take = 5;
+        const take = 10;
 
         const role = scope === 'community' ? 'USER' : 'ADMIN';
 
@@ -384,98 +392,134 @@ class PostService {
         return true;
     }
 
-    async getHomePosts(scope: string) {
-        if (scope !== 'community' && scope !== 'admin') {
-            throw new Error('Invalid scope');
-        }
-
+    private async refreshHomePostsCache(scope: HomeScopeType) {
         const scopeEnum =
             scope === 'community' ? HomeScope.COMMUNITY : HomeScope.ADMIN;
 
+        // Fetch ordered IDs for this specific scope
         const rows = await prisma.homePost.findMany({
             where: { scope: scopeEnum },
             orderBy: { position: 'asc' },
-            select: {
-                postId: true,
-            },
+            select: { postId: true },
         });
 
-        const ids: string[] = rows.map((row: { postId: string }) => row.postId);
+        const ids = rows.map((row) => row.postId);
 
-        if (ids.length === 0) return [];
+        // Handle empty state early
+        if (ids.length === 0) {
+            this.homePostsCache[scope].data = [];
+            this.homePostsCache[scope].expiresAt =
+                Date.now() + this.HOME_POSTS_TTL;
+            return;
+        }
 
-        let posts: any[] = await prisma.post.findMany({
+        // Fetch actual post data
+        const rawPosts = await prisma.post.findMany({
             where: {
                 id: { in: ids },
                 status: 'APPROVED',
             },
-
             select: {
                 id: true,
                 title: true,
                 content: true,
-                tags: {
-                    take: 4,
-                    select: { name: true },
-                },
-
+                tags: { take: 4, select: { name: true } },
                 images: {
                     take: 1,
                     orderBy: { createdAt: 'asc' },
-                    select: {
-                        imageUrl: true,
-                        originalName: true,
-                    },
+                    select: { imageUrl: true, originalName: true },
                 },
                 author: {
                     select: {
                         name: true,
                         avatar: true,
-                        tier: {
-                            select: {
-                                name: true,
-                                badgeColor: true,
-                            },
-                        },
+                        tier: { select: { name: true, badgeColor: true } },
                     },
                 },
                 likesCount: true,
                 commentsCount: true,
             },
         });
-        const postMap: { [key: string]: any } = {};
 
-        for (const post of posts) {
+        // Re-order mapping
+        const postMap: Record<string, any> = {};
+        for (const post of rawPosts) {
             postMap[post.id] = post;
         }
 
-        posts = ids.map((id) => postMap[id]).filter(Boolean);
+        const formattedPosts = ids
+            .map((id) => postMap[id])
+            .filter(Boolean)
+            .map((post) => ({
+                id: post.id,
+                title: post.title,
+                content: post.content.slice(0, 450),
+                likesCount: post.likesCount,
+                commentsCount: post.commentsCount,
+                tags: post.tags,
+                image: {
+                    url: post.images[0].imageUrl,
+                    name: post.images[0].originalName,
+                },
+                author: {
+                    name: post.author.name,
+                    avatar: post.author.avatar,
+                    tierName: post.author.tier?.name ?? null,
+                    badgeColor: post.author.tier?.badgeColor ?? null,
+                },
+            }));
 
-        posts = posts.map((post) => ({
-            id: post.id,
-            title: post.title,
-            content: post.content.slice(0, 450),
+        // 3. Save directly to the specific scope's bucket
+        this.homePostsCache[scope].data = formattedPosts;
 
-            likesCount: post.likesCount,
-            commentsCount: post.commentsCount,
+        const jitter = Math.floor(Math.random() * 1000 * 60 * 5);
+        this.homePostsCache[scope].expiresAt =
+            Date.now() + this.HOME_POSTS_TTL + jitter;
+    }
 
-            tags: post.tags,
+    // 4. Invalidation can now target a specific route, or clear everything
+    public invalidateHomePostsCache(scope?: HomeScopeType) {
+        if (scope) {
+            this.homePostsCache[scope].expiresAt = 0;
+        } else {
+            this.homePostsCache.community.expiresAt = 0;
+            this.homePostsCache.admin.expiresAt = 0;
+        }
+    }
 
-            image: {
-                url: post.images[0]?.imageUrl ?? null,
-                name: post.images[0]?.originalName ?? null,
-            },
+    // 5. The hot path (reads the query param)
+    public async getHomePosts(scope: string) {
+        if (scope !== 'community' && scope !== 'admin') {
+            throw new Error('Invalid scope');
+        }
 
-            author: {
-                name: post.author.name,
-                avatar: post.author.avatar,
+        const validScope = scope as HomeScopeType;
 
-                tierName: post.author.tier?.name ?? null,
-                badgeColor: post.author.tier?.badgeColor ?? null,
-            },
-        }));
+        // Grab the correct bucket using bracket notation
+        const cache = this.homePostsCache[validScope];
+        const now = Date.now();
 
-        return { posts };
+        if (now > cache.expiresAt) {
+            // Check the specific bucket's promise to prevent stampedes
+            if (!cache.refreshPromise) {
+                cache.refreshPromise = this.refreshHomePostsCache(validScope)
+                    .catch((e) =>
+                        console.error(
+                            `Home posts refresh failed for ${validScope}:`,
+                            e,
+                        ),
+                    )
+                    .finally(() => (cache.refreshPromise = null));
+            }
+
+            // Cold-start protection per bucket
+            if (cache.data.length === 0) {
+                await cache.refreshPromise;
+            }
+        }
+
+        // Return only the requested scope
+        return { posts: this.homePostsCache[validScope].data };
     }
 }
 
