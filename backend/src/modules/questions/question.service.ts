@@ -1,7 +1,26 @@
 import { prisma } from '../../lib/client.js';
 import { normalizeArabic } from '../../utils/normalizeArabic.js';
+import {
+    FormattedHomeQuestion,
+    PopularQuestion,
+} from '../../types/question.js';
 
 class QuestionService {
+    // 2. Cache State Variables
+    private cachedHomeQuestions: FormattedHomeQuestion[] = [];
+    private homeQuestionsExpiresAt = 0;
+    private homeQuestionsRefreshPromise: Promise<void> | null = null;
+
+    // 1 Hour TTL (since homepage questions rarely change minute-to-minute)
+    private readonly HOME_QUESTIONS_TTL = 1000 * 60 * 60;
+
+    private cachedPopularQuestions: PopularQuestion[] = [];
+    private popularQuestionsExpiresAt = 0;
+    private popularQuestionsRefreshPromise: Promise<void> | null = null;
+
+    // 15 Minutes TTL
+    private readonly POPULAR_QUESTIONS_TTL = 1000 * 60 * 15;
+
     async createQuestion(
         title: string,
         content: string,
@@ -318,45 +337,36 @@ class QuestionService {
         return true;
     }
 
-    async getHomeQuestions() {
+    // 3. The Background Refresh Logic
+    private async refreshHomeQuestionsCache() {
         const rows = await prisma.homeQuestion.findMany({
             orderBy: { position: 'asc' },
-            select: {
-                questionId: true,
-            },
+            select: { questionId: true },
         });
 
-        const ids: string[] = rows.map(
-            (row: { questionId: string }) => row.questionId,
-        );
+        const ids = rows.map((row) => row.questionId);
 
-        if (ids.length === 0) return [];
+        if (ids.length === 0) {
+            this.cachedHomeQuestions = [];
+            this.homeQuestionsExpiresAt = Date.now() + this.HOME_QUESTIONS_TTL;
+            return;
+        }
 
-        let questions: any[] = await prisma.question.findMany({
+        const rawQuestions = await prisma.question.findMany({
             where: {
                 id: { in: ids },
                 status: 'APPROVED',
             },
-
             select: {
                 id: true,
                 title: true,
                 content: true,
-                tags: {
-                    take: 4,
-                    select: { name: true },
-                },
-
+                tags: { take: 4, select: { name: true } },
                 author: {
                     select: {
                         name: true,
                         avatar: true,
-                        tier: {
-                            select: {
-                                name: true,
-                                badgeColor: true,
-                            },
-                        },
+                        tier: { select: { name: true, badgeColor: true } },
                     },
                 },
                 likesCount: true,
@@ -373,10 +383,7 @@ class QuestionService {
                                 name: true,
                                 avatar: true,
                                 tier: {
-                                    select: {
-                                        name: true,
-                                        badgeColor: true,
-                                    },
+                                    select: { name: true, badgeColor: true },
                                 },
                             },
                         },
@@ -384,46 +391,81 @@ class QuestionService {
                 },
             },
         });
-        const questionMap: { [key: string]: any } = {};
 
-        for (const question of questions) {
+        // Map to preserve exact ordering from the HomeQuestion table
+        const questionMap: Record<string, any> = {};
+        for (const question of rawQuestions) {
             questionMap[question.id] = question;
         }
 
-        questions = ids.map((id) => questionMap[id]).filter(Boolean);
+        this.cachedHomeQuestions = ids
+            .map((id) => questionMap[id])
+            .filter(Boolean)
+            .map((question) => ({
+                id: question.id,
+                title: question.title,
+                content: question.content.slice(0, 280),
+                likesCount: question.likesCount,
+                answersCount: question.answersCount,
+                tags: question.tags,
+                author: {
+                    name: question.author.name,
+                    avatar: question.author.avatar,
+                    tierName: question.author.tier?.name ?? null,
+                    badgeColor: question.author.tier?.badgeColor ?? null,
+                },
+                topAnswer: question.answers[0]
+                    ? {
+                          id: question.answers[0].id,
+                          content: question.answers[0].content.slice(0, 280),
+                          totalVoteValue: question.answers[0].totalVoteValue,
+                          author: question.answers[0].author,
+                      }
+                    : null,
+            }));
 
-        questions = questions.map((question) => ({
-            id: question.id,
-            title: question.title,
-            content: question.content.slice(0, 280),
-
-            likesCount: question.likesCount,
-            answersCount: question.answersCount,
-
-            tags: question.tags,
-
-            author: {
-                name: question.author.name,
-                avatar: question.author.avatar,
-
-                tierName: question.author.tier?.name ?? null,
-                badgeColor: question.author.tier?.badgeColor ?? null,
-            },
-
-            topAnswer: question.answers[0]
-                ? {
-                      id: question.answers[0].id,
-                      content: question.answers[0].content.slice(0, 280),
-                      totalVoteValue: question.answers[0].totalVoteValue,
-                      author: question.answers[0].author,
-                  }
-                : null,
-        }));
-
-        return { questions };
+        // Jitter to prevent stampedes across multiple caches expiring exactly together
+        const jitter = Math.floor(Math.random() * 1000 * 60 * 5);
+        this.homeQuestionsExpiresAt =
+            Date.now() + this.HOME_QUESTIONS_TTL + jitter;
     }
 
-    async getPopularQuestions(limit: number = 10) {
+    // 4. Manual Invalidation Hook (Call this from Admin panel on update)
+    invalidateHomeQuestionsCache() {
+        this.homeQuestionsExpiresAt = 0;
+    }
+
+    // 5. The Hot Path API
+    async getHomeQuestions() {
+        const now = Date.now();
+
+        if (now > this.homeQuestionsExpiresAt) {
+            if (!this.homeQuestionsRefreshPromise) {
+                this.homeQuestionsRefreshPromise =
+                    this.refreshHomeQuestionsCache()
+                        .catch((e) =>
+                            console.error(
+                                'Home questions cache refresh failed:',
+                                e,
+                            ),
+                        )
+                        .finally(
+                            () => (this.homeQuestionsRefreshPromise = null),
+                        );
+            }
+
+            // Cold start protection: Only block if the cache is completely empty
+            if (this.cachedHomeQuestions.length === 0) {
+                await this.homeQuestionsRefreshPromise;
+            }
+        }
+
+        // Always return a consistent object shape
+        return { questions: this.cachedHomeQuestions };
+    }
+
+    private async refreshPopularQuestionsCache() {
+        // Fetch exactly 10. This covers the max limit for the whole app.
         const questions = await prisma.question.findMany({
             where: {
                 status: 'APPROVED',
@@ -431,7 +473,7 @@ class QuestionService {
             orderBy: {
                 answersCount: 'desc',
             },
-            take: limit,
+            take: 10,
             select: {
                 id: true,
                 title: true,
@@ -439,7 +481,43 @@ class QuestionService {
             },
         });
 
-        return questions;
+        this.cachedPopularQuestions = questions;
+
+        const jitter = Math.floor(Math.random() * 1000 * 15);
+        this.popularQuestionsExpiresAt =
+            Date.now() + this.POPULAR_QUESTIONS_TTL + jitter;
+    }
+
+    invalidatePopularQuestionsCache() {
+        this.popularQuestionsExpiresAt = 0;
+    }
+
+    async getPopularQuestions(limit: number = 10) {
+        const now = Date.now();
+
+        if (now > this.popularQuestionsExpiresAt) {
+            if (!this.popularQuestionsRefreshPromise) {
+                this.popularQuestionsRefreshPromise =
+                    this.refreshPopularQuestionsCache()
+                        .catch((e) =>
+                            console.error(
+                                'Popular questions cache refresh failed:',
+                                e,
+                            ),
+                        )
+                        .finally(
+                            () => (this.popularQuestionsRefreshPromise = null),
+                        );
+            }
+
+            if (this.cachedPopularQuestions.length === 0) {
+                await this.popularQuestionsRefreshPromise;
+            }
+        }
+
+        const safeLimit = Math.min(limit, 10);
+
+        return this.cachedPopularQuestions.slice(0, safeLimit);
     }
 }
 
