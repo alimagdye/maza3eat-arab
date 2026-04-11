@@ -28,8 +28,20 @@ const meLimiter = createLimiter(
     'Too many requests. Please try again later.',
 );
 
+const userPostsLimiter = createLimiter(
+    300,
+    'Too many requests. Please try again later.',
+);
+
+const userQuestionsLimiter = createLimiter(
+    300,
+    'Too many requests. Please try again later.',
+);
+
 const userRateLimiter = {
     meLimiter,
+    userPostsLimiter,
+    userQuestionsLimiter,
 };
 
 export default userRateLimiter;
