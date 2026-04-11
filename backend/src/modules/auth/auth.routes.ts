@@ -4,28 +4,20 @@ import authValidation from './auth.validation.js';
 import validate from '../../middlewares/validateRequest.js';
 import authRateLimiter from './auth.rateLimiter.js';
 import authController from './auth.controller.js';
-import { requireAuth } from '../../middlewares/requireAuth.js';
 const router = express.Router();
 
 router.get(
     '/google',
-    // authRateLimiter.oauthRateLimiter,
+    authRateLimiter.oauthRateLimiter,
     googleAuthController.getAuthUrl,
 );
 
 router.get(
     '/google/callback',
-    // authRateLimiter.oauthRateLimiter,
+    authRateLimiter.oauthRateLimiter,
     authValidation.validateHandleCallback,
     validate,
     googleAuthController.handleCallback,
-);
-
-router.get(
-    '/me',
-    requireAuth,
-    authRateLimiter.userRateLimiter,
-    authController.me,
 );
 
 router.post(
