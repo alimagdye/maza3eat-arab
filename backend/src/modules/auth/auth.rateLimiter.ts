@@ -1,7 +1,4 @@
-import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
-import { Request } from 'express';
-
-const userKey = (req: Request) => req.user?.sub ?? ipKeyGenerator(req);
+import rateLimit from 'express-rate-limit';
 
 const authRateLimiter = {
     oauthRateLimiter: rateLimit({
@@ -12,18 +9,6 @@ const authRateLimiter = {
         message: {
             status: 'fail',
             message: 'Too many OAuth requests. Please try again later.',
-        },
-    }),
-
-    userRateLimiter: rateLimit({
-        windowMs: 60 * 60 * 1000,
-        max: 100,
-        keyGenerator: userKey,
-        standardHeaders: true,
-        legacyHeaders: false,
-        message: {
-            status: 'fail',
-            message: 'Too many requests. Please try again later.',
         },
     }),
 

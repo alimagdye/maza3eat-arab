@@ -4,14 +4,6 @@ import AuthService from './auth.service.js';
 class AuthController {
     private authService = AuthService;
 
-    me = async (req: any, res: Response) => {
-        const user = await this.authService.getUserById(req.user.sub);
-
-        if (!user) return res.status(401).json({ message: 'Unauthorized' });
-
-        return res.status(200).json({ status: 'success', data: user });
-    };
-
     logout = async (req: Request, res: Response) => {
         const refreshToken = req.cookies?.refreshToken;
 
