@@ -5,6 +5,7 @@ class UserService {
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: {
+                id: true,
                 name: true,
                 email: true,
                 avatar: true,
@@ -23,6 +24,128 @@ class UserService {
         }
 
         return user;
+    }
+
+    async getUserPosts(userId: string, cursor: string | null = null) {
+        const take = 10;
+        const posts = await prisma.post.findMany({
+            where: { authorId: userId },
+            orderBy: { createdAt: 'desc' },
+            take,
+            ...(cursor && {
+                skip: 1,
+                cursor: { id: cursor },
+            }),
+            select: {
+                id: true,
+                title: true,
+                content: true,
+
+                likesCount: true,
+                commentsCount: true,
+
+                createdAt: true,
+                tags: {
+                    take: 4,
+                    select: { name: true },
+                },
+
+                images: {
+                    take: 1,
+                    orderBy: { createdAt: 'asc' },
+                    select: {
+                        imageUrl: true,
+                        originalName: true,
+                    },
+                },
+
+                _count: {
+                    select: {
+                        images: true,
+                    },
+                },
+            },
+        });
+
+        const hasMore = posts.length === take;
+
+        const nextCursor = hasMore ? posts[posts.length - 1].id : null;
+
+        const data = posts.map((post) => ({
+            id: post.id,
+            title: post.title,
+            content: post.content.slice(0, 450),
+
+            likesCount: post.likesCount,
+            commentsCount: post.commentsCount,
+
+            publishDate: post.createdAt,
+
+            tags: post.tags,
+
+            image: {
+                url: post.images[0]?.imageUrl ?? null,
+                name: post.images[0]?.originalName ?? null,
+                remainingImages: Math.max(post._count.images - 1, 0),
+            },
+        }));
+
+        return {
+            posts: data,
+            nextCursor,
+            hasMore,
+        };
+    }
+
+    async getUserQuestions(userId: string, cursor: string | null) {
+        const take = 10;
+        const questions = await prisma.question.findMany({
+            where: { authorId: userId },
+            orderBy: { createdAt: 'desc' },
+            take,
+            ...(cursor && {
+                skip: 1,
+                cursor: { id: cursor },
+            }),
+
+            select: {
+                id: true,
+                title: true,
+                content: true,
+
+                likesCount: true,
+                answersCount: true,
+
+                createdAt: true,
+                tags: {
+                    take: 4,
+                    select: { name: true },
+                },
+            },
+        });
+
+        const hasMore = questions.length === take;
+
+        const nextCursor = hasMore ? questions[questions.length - 1].id : null;
+
+        const data = questions.map((question) => ({
+            id: question.id,
+            title: question.title,
+            content: question.content.slice(0, 280),
+
+            likesCount: question.likesCount,
+            answersCount: question.answersCount,
+
+            publishDate: question.createdAt,
+
+            tags: question.tags,
+        }));
+
+        return {
+            questions: data,
+            nextCursor,
+            hasMore,
+        };
     }
 }
 

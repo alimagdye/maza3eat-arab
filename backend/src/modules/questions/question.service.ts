@@ -119,7 +119,7 @@ class QuestionService {
         cursor: string | null = null,
         search: string = '',
     ) {
-        const take = 5;
+        const take = 10;
 
         const where: any = {
             status: 'APPROVED',
@@ -151,8 +151,6 @@ class QuestionService {
                     },
                 },
             ];
-
-            console.log(where.OR);
         }
 
         const orderBy =
