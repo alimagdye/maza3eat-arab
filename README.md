@@ -14,27 +14,22 @@ Maza3eat Arab website
 
 3. Add environment variables based on `.env.example`.
 
-4. Create the database
+4. Create the database. *(skip this step if you run it via server)*
 ``` bash
     CREATE DATABASE maza3eat_db;
 ```
 
-5. Connect to your database url:
+5. Setup and seed your database:
 ``` bash
-    npx prisma generate
+    npm run db:seed
 ```
 
-6. Add database migrations:
-``` bash
-    npx prisma migrate dev
-```
-
-7. Start the server for development:
+6. Start the server for development:
 ``` bash
     npm run dev
 ```
 
-8. View the databse data (optional):
+7. View the databse data (optional):
 ``` bash
     npx prisma studio
 ```

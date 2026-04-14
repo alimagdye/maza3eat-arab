@@ -1,38 +1,21 @@
 import rateLimit from 'express-rate-limit';
+import { createIPLimiter } from '../../middlewares/rateLimit/rateLimiter.factory.js';
 
 const authRateLimiter = {
-    oauthRateLimiter: rateLimit({
-        windowMs: 15 * 60 * 1000,
-        max: 10,
-        standardHeaders: true,
-        legacyHeaders: false,
-        message: {
-            status: 'fail',
-            message: 'Too many OAuth requests. Please try again later.',
-        },
-    }),
+    oauthRateLimiter: createIPLimiter(
+        10,
+        'Too many OAuth requests. Please try again later.',
+    ),
 
-    logoutRateLimiter: rateLimit({
-        windowMs: 15 * 60 * 1000,
-        max: 5,
-        standardHeaders: true,
-        legacyHeaders: false,
-        message: {
-            status: 'fail',
-            message: 'Too many logout requests. Please try again later.',
-        },
-    }),
+    logoutRateLimiter: createIPLimiter(
+        5,
+        'Too many logout requests. Please try again later.',
+    ),
 
-    refreshTokenRateLimiter: rateLimit({
-        windowMs: 15 * 60 * 1000,
-        max: 10,
-        standardHeaders: true,
-        legacyHeaders: false,
-        message: {
-            status: 'fail',
-            message: 'Too many refresh token requests. Please try again later.',
-        },
-    }),
+    refreshTokenRateLimiter: createIPLimiter(
+        10,
+        'Too many refresh token requests. Please try again later.',
+    ),
 };
 
 export default authRateLimiter;

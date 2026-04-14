@@ -83,6 +83,16 @@ class ReplyService {
                 },
             });
 
+            // await sendReplyNotification({
+            //     tx,
+            //     recipientId: comment.authorId,
+            //     actorId: userId,
+
+            //     postId: comment.postId,
+            //     commentId: comment.id,
+            //     replyId: reply.id,
+            // });
+
             return reply;
         });
     }
@@ -187,6 +197,16 @@ class ReplyService {
                 },
             });
 
+            // await sendReplyNotification({
+            //     tx,
+            //     recipientId: parentReply.authorId,
+            //     actorId: userId,
+
+            //     postId: comment.postId,
+            //     commentId: comment.id,
+            //     replyId: reply.id,
+            // });
+
             return reply;
         });
     }
@@ -253,7 +273,7 @@ class ReplyService {
         cursor: string | null = null,
         userId: string | null = null,
     ) {
-        const pageSize = 5;
+        const pageSize = 10;
 
         const comment = await prisma.comment.findUnique({
             where: { id: commentId },
@@ -350,7 +370,7 @@ class ReplyService {
         cursor: string | null = null,
         userId: string | null = null,
     ) {
-        const pageSize = 5;
+        const pageSize = 10;
 
         // check parent exists
         const parent = await prisma.reply.findUnique({

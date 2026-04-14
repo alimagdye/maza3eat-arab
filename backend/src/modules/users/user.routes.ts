@@ -7,7 +7,13 @@ import validate from '../../middlewares/validateRequest.js';
 
 const router = Router();
 
-router.get('/me', requireAuth, userRateLimiter.meLimiter, userController.me);
+router.get(
+    '/me',
+    userRateLimiter.preAuthLimiter,
+    requireAuth,
+    userRateLimiter.meLimiter,
+    userController.me,
+);
 
 router.get(
     '/:userId/posts',

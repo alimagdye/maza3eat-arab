@@ -35,29 +35,31 @@ class QuestionService {
             throw new Error('Max 10 tags');
         }
 
+        const uniqueOriginalTags = [
+            ...new Set(tags.map((tag) => tag.trim()).filter(Boolean)),
+        ];
+
+        const normalizedList = uniqueOriginalTags.map((tag) =>
+            normalizeArabic(tag),
+        );
+
+        const titleNormalized = normalizeArabic(title);
+
         return prisma.$transaction(async (tx) => {
+            // 1. Create question
             const newQuestion = await tx.question.create({
                 data: {
                     title,
-                    titleNormalized: normalizeArabic(title),
+                    titleNormalized,
                     content,
                     authorId: userId,
                 },
             });
 
-            const uniqueOriginalTags = [
-                ...new Set(tags.map((tag) => tag.trim()).filter(Boolean)),
-            ];
-
-            const normalizedList = uniqueOriginalTags.map((tag) =>
-                normalizeArabic(tag),
-            );
-
+            // 2. Get existing tags (FAST if indexed)
             const existing = await tx.tag.findMany({
                 where: {
-                    normalizedName: {
-                        in: normalizedList,
-                    },
+                    normalizedName: { in: normalizedList },
                 },
                 select: {
                     id: true,
@@ -65,12 +67,11 @@ class QuestionService {
                 },
             });
 
-            const tagIdByNormalized = new Map(
-                existing.map((tag) => [tag.normalizedName, tag.id]),
-            );
+            const existingSet = new Set(existing.map((t) => t.normalizedName));
 
+            // 3. Create missing tags
             const missing = normalizedList
-                .filter((n) => !tagIdByNormalized.has(n))
+                .filter((n) => !existingSet.has(n))
                 .map((n) => ({
                     normalizedName: n,
                 }));
@@ -80,24 +81,24 @@ class QuestionService {
                     data: missing,
                     skipDuplicates: true,
                 });
-
-                const created = await tx.tag.findMany({
-                    where: {
-                        normalizedName: {
-                            in: missing.map((m) => m.normalizedName),
-                        },
-                    },
-                    select: {
-                        id: true,
-                        normalizedName: true,
-                    },
-                });
-
-                for (const tag of created) {
-                    tagIdByNormalized.set(tag.normalizedName, tag.id);
-                }
             }
 
+            // 4. Fetch ALL tags (single query)
+            const allTags = await tx.tag.findMany({
+                where: {
+                    normalizedName: { in: normalizedList },
+                },
+                select: {
+                    id: true,
+                    normalizedName: true,
+                },
+            });
+
+            const tagIdByNormalized = new Map(
+                allTags.map((tag) => [tag.normalizedName, tag.id]),
+            );
+
+            // 5. Create relations
             await tx.questionTag.createMany({
                 data: uniqueOriginalTags.map((original) => {
                     const normalized = normalizeArabic(original);

@@ -16,6 +16,12 @@ class UserService {
                         description: true,
                     },
                 },
+                _count: {
+                    select: {
+                        posts: true,
+                        questions: true,
+                    },
+                },
             },
         });
 
@@ -23,7 +29,17 @@ class UserService {
             return null;
         }
 
-        return user;
+        return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            avatar: user.avatar,
+            tier: user.tier,
+            counts:{
+                posts: user._count.posts,
+                questions: user._count.questions,
+            }
+        };
     }
 
     async getUserPosts(userId: string, cursor: string | null = null) {

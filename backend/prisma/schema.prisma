@@ -36,6 +36,10 @@ enum ReportTargetType {
 }
 
 enum NotificationType {
+  ANSWER_REPLY
+  COMMENT_REPLY
+  REPLY_REPLY_POST
+  REPLY_REPLY_QUESTION
   ADMIN
   CONTACT
   COMMENT
@@ -92,7 +96,8 @@ model User {
   sentContactRequests     ContactRequest[] @relation("SentRequests")
   receivedContactRequests ContactRequest[] @relation("ReceivedRequests")
 
-  notifications   Notification[]
+  notifications   Notification[] @relation("Recipient")
+  notificationActor Notification[] @relation
   reports         Report[]       @relation("UserReports")
   reviewedReports Report[]       @relation("AdminReviewedReports")
 
@@ -361,6 +366,7 @@ model Question {
   answers Answer[]
   likes QuestionLike[]
   homeQuestions HomeQuestion[]
+  answerReplyNotifications AnswerReplyNotification[]
 
   likesCount Int @default(0)
   answersCount Int @default(0)
@@ -403,6 +409,7 @@ model Answer {
   votes   AnswerVote[]
   answerReplies AnswerReply[]
   reports Report[]
+  answerReplyNotifications AnswerReplyNotification[]
 
   createdAt DateTime @default(now())
 
@@ -427,6 +434,7 @@ model AnswerReply {
   answerReplies       AnswerReply[] @relation("AnswerReplyThread")
   likes AnswerReplyLike[]
   reports Report[]
+  answerReplyNotifications AnswerReplyNotification[]
 
   createdAt DateTime @default(now())
 
@@ -555,23 +563,72 @@ model ContactRequest {
 //////////////////////////////////////////////////////
 
 model Notification {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
 
-  type    NotificationType
-  title   String
-  message String
-  isRead  Boolean          @default(false)
+  type        NotificationType
 
-  relatedEntityType String?
-  relatedEntityId   String?
+  recipientId String
+  recipient   User @relation("Recipient",fields: [recipientId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  // read state
+  isRead      Boolean  @default(false)
 
-  @@index([userId])
-  @@index([type])
+  // aggregation key (e.g., "POST_LIKE:postId")
+  //groupKey    String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lastActorId String
+  lastActor   User @relation( fields: [lastActorId], references: [id], onDelete: Cascade)
+
+  // aggregation actors (only used for aggregated types)
+  //actors      NotificationActor[]
+
+  // subtypes
+  //postLike        PostLikeNotification?
+  //postComment     PostCommentNotification?
+  answerReply   AnswerReplyNotification?
+  //commentReply  CommentReplyNotification?  
+  //contact         ContactNotification?
+  //admin           AdminNotification?
+  //moderation      ModerationNotification?
+
+  @@index([recipientId, createdAt(sort: Desc)])
+  //@@index([recipientId, groupKey])
+  @@index([recipientId, isRead])
+  @@index([recipientId, createdAt, id])
 }
+
+model AnswerReplyNotification {
+  id             String       @id @default(uuid())
+
+  notificationId String       @unique
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  answerId   String
+  answer     Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  replyId String
+  reply   AnswerReply @relation(fields: [replyId], references: [id], onDelete: Cascade)
+}
+
+//model CommentReplyNotification {
+  //id             String       @id @default(uuid())
+
+  //notificationId String       @unique
+  //notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  //actorId        String
+  //actor          User         @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  //postId         String
+  //commentId      String
+  //replyId        String
+//}
 
 //////////////////////////////////////////////////////
 // ADS

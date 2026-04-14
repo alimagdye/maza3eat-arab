@@ -1,32 +1,8 @@
-import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { Request, Response, NextFunction } from 'express';
-
-const createLimiter = (max: number, message: string) =>
-    rateLimit({
-        windowMs: 15 * 60 * 1000,
-        max,
-
-        keyGenerator: (req: Request) => {
-            if (req.user?.sub) {
-                return `user-${req.user.sub}`;
-            }
-
-            return ipKeyGenerator(req);
-        },
-
-        standardHeaders: true,
-        legacyHeaders: false,
-
-        message: {
-            status: 'fail',
-            message,
-        },
-    });
-
-const createQuestionLimiter = createLimiter(
-    10,
-    'Too many question creation requests. Please try again later.',
-);
+import {
+    createIPLimiter,
+    createLimiter,
+} from '../../middlewares/rateLimit/rateLimiter.factory.js';
 
 const browseLimiter = createLimiter(
     300,
@@ -36,11 +12,6 @@ const browseLimiter = createLimiter(
 const searchLimiter = createLimiter(
     400,
     'Too many search requests. Please try again later.',
-);
-
-const getQuestionByIdLimiter = createLimiter(
-    300,
-    'Too many requests. Please try again later.',
 );
 
 const getQuestionsLimiter = (
@@ -58,16 +29,21 @@ const getQuestionsLimiter = (
     return browseLimiter(req, res, next);
 };
 
-const deleteQuestionByIdLimiter = createLimiter(
-    20,
-    'Too many delete requests. Please try again later.',
-);
-
 const questionRateLimiter = {
-    createQuestionLimiter,
+    preAuthLimiter: createIPLimiter(40, 'Too many requests'),
+    createQuestionLimiter: createLimiter(
+        10,
+        'Too many question creation requests. Please try again later.',
+    ),
     getQuestionsLimiter,
-    getQuestionByIdLimiter,
-    deleteQuestionByIdLimiter,
+    getQuestionByIdLimiter: createLimiter(
+        300,
+        'Too many requests. Please try again later.',
+    ),
+    deleteQuestionByIdLimiter: createLimiter(
+        20,
+        'Too many delete requests. Please try again later.',
+    ),
 };
 
 export default questionRateLimiter;

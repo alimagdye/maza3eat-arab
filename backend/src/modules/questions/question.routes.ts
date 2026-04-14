@@ -12,6 +12,7 @@ const router = Router();
 
 router.post(
     '/',
+    questionRateLimiter.preAuthLimiter,
     requireAuth,
     questionRateLimiter.createQuestionLimiter,
     questionValidation.validateCreateQuestion,
@@ -48,6 +49,7 @@ router.get(
 
 router.delete(
     '/:questionId',
+    questionRateLimiter.preAuthLimiter,
     requireAuth,
     questionRateLimiter.deleteQuestionByIdLimiter,
     questionValidation.validateQuestionId,

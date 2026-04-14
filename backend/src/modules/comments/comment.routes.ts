@@ -10,6 +10,7 @@ const router = Router({ mergeParams: true });
 
 router.post(
     '/:postId/comments',
+    commentRateLimiter.preAuthLimiter,
     requireAuth,
     commentRateLimiter.createCommentLimiter,
     commentValidation.validateCreateComment,
@@ -28,6 +29,7 @@ router.get(
 
 router.delete(
     '/:postId/comments/:commentId',
+    commentRateLimiter.preAuthLimiter,
     requireAuth,
     commentRateLimiter.deleteCommentLimiter,
     commentValidation.validateDeleteComment,

@@ -10,6 +10,7 @@ const router = Router({ mergeParams: true });
 
 router.post(
     '/:questionId/answers',
+    answerRateLimiter.preAuthLimiter,
     requireAuth,
     answerRateLimiter.createAnswerLimiter,
     answerValidation.validateCreateAnswer,
@@ -28,6 +29,7 @@ router.get(
 
 router.delete(
     '/:questionId/answers/:answerId',
+    answerRateLimiter.preAuthLimiter,
     requireAuth,
     answerRateLimiter.deleteAnswerLimiter,
     answerValidation.validateDeleteAnswer,

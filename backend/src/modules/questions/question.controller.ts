@@ -60,8 +60,10 @@ class QuestionController {
         const userId = req.user ? req.user.sub : null;
 
         try {
-            const question =
-                await this.questionService.getQuestionById(questionId, userId);
+            const question = await this.questionService.getQuestionById(
+                questionId,
+                userId,
+            );
             if (!question) {
                 return res
                     .status(404)
@@ -133,7 +135,8 @@ class QuestionController {
         try {
             const limit = parseInt(req.query.limit as string) || 10;
 
-            const questions = await this.questionService.getPopularQuestions(limit);
+            const questions =
+                await this.questionService.getPopularQuestions(limit);
 
             return res.status(200).json({
                 status: 'success',
