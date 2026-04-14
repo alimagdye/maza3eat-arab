@@ -1,6 +1,6 @@
 import { prisma } from '../../lib/client.js';
 import replyUtils from './reply.utils.js';
-
+import notificationService from '../notifications/notification.service.js';
 class ReplyService {
     private MAX_DEPTH = 10;
     async replyToAnswer(answerId: string, userId: string, content: string) {
@@ -10,6 +10,7 @@ class ReplyService {
                 select: {
                     id: true,
                     questionId: true,
+                    authorId: true,
                 },
             });
 
@@ -81,6 +82,18 @@ class ReplyService {
                         increment: 1,
                     },
                 },
+            });
+
+            // prevent self-notification
+            await notificationService.createReplyNotification({
+                tx,
+                recipientId: answer.authorId,
+                actorId: userId,
+
+                questionId: answer.questionId,
+                answerId: answer.id,
+                replyId: reply.id,
+                type: 'ANSWER_REPLY',
             });
 
             return reply;
@@ -187,6 +200,16 @@ class ReplyService {
                 },
             });
 
+            // await notificationService.createReplyNotification({
+            //     tx,
+            //     recipientId: parentReply.authorId,
+            //     actorId: userId,
+
+            //     postOrQuestionId: answer.questionId,
+            //     commentOrAnswerId: answerId,
+            //     answerReplyOrReplyReplyId: reply.id,
+            // });
+
             return reply;
         });
     }
@@ -252,8 +275,9 @@ class ReplyService {
         answerId: string,
         cursor: string | null = null,
         userId: string | null = null,
+        excludeReplyId: string | null = null,
     ) {
-        const pageSize = 5;
+        const pageSize = 10;
 
         const answer = await prisma.answer.findUnique({
             where: { id: answerId },
@@ -270,6 +294,9 @@ class ReplyService {
             where: {
                 answerId,
                 parentReplyId: null,
+                ...(excludeReplyId && {
+                    NOT: { id: excludeReplyId },
+                }),
             },
 
             take: pageSize,
@@ -351,7 +378,7 @@ class ReplyService {
         cursor: string | null = null,
         userId: string | null = null,
     ) {
-        const pageSize = 5;
+        const pageSize = 10;
 
         const parent = await prisma.answerReply.findUnique({
             where: { id: replyId },

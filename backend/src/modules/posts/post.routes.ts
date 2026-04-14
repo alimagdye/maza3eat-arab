@@ -13,11 +13,12 @@ const router = Router();
 
 router.post(
     '/',
+    postRateLimiter.preAuthLimiter,
     requireAuth,
     postRateLimiter.createPostLimiter,
-    uploadPostImages,
     postValidation.validateCreatePost,
     validate,
+    uploadPostImages,
     postController.createPost,
 );
 
@@ -47,6 +48,7 @@ router.get(
 
 router.delete(
     '/:postId',
+    postRateLimiter.preAuthLimiter,
     requireAuth,
     postRateLimiter.deletePostByIdLimiter,
     postValidation.validatePostId,

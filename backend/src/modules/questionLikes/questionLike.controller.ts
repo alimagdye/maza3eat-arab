@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import LikeService from './like.service.js';
+import LikeService from './questionLike.service.js';
 import { Prisma } from '@prisma/client';
 
 class LikeController {

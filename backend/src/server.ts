@@ -3,6 +3,7 @@ import http from 'http';
 import cors from 'cors';
 import morgan from 'morgan';
 import helmet from 'helmet';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { prisma } from './lib/client.js';
 // -----------------------------
@@ -17,25 +18,29 @@ const NODE_ENV: string = process.env.NODE_ENV || 'development';
 // -----------------------------
 // Global Middlewares
 // -----------------------------
-import globalRateLimiter from './middlewares/globalRateLimiter.js';
+import globalRateLimiter from './middlewares/rateLimit/globalRateLimiter.js';
 
+app.set('trust proxy', 1);
 app.use(helmet());
-
-app.use(cookieParser());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
 app.use(
     cors({
         origin: process.env.CLIENT_URL || '*',
         credentials: true,
     }),
 );
+app.use(globalRateLimiter);
+app.use(cookieParser());
+app.use(express.json({ limit: '100kb' }));
+app.use(
+    express.urlencoded({
+        extended: true,
+        limit: '100kb',
+    }),
+);
+app.use(compression());
 if (NODE_ENV === 'development') {
     app.use(morgan('dev'));
 }
-
-app.use(globalRateLimiter);
 
 // -----------------------------
 // Health Check
@@ -64,16 +69,16 @@ app.use(globalRateLimiter);
 import authRoutes from './modules/auth/auth.routes.js';
 import postRoutes from './modules/posts/post.routes.js';
 import commentReplyRoutes from './modules/commentReplies/reply.routes.js';
-import commentLikeRoutes from './modules/postLikes/like.routes.js';
+import commentLikeRoutes from './modules/postLikes/postLike.routes.js';
 import tagRoutes from './modules/tags/tag.routes.js';
 import questionRoutes from './modules/questions/question.routes.js';
 import answerReplyRoutes from './modules/answerReplies/reply.routes.js';
-import answerLikeRoutes from './modules/questionLikes/like.routes.js';
+import answerLikeRoutes from './modules/questionLikes/questionLike.routes.js';
 import adRoutes from './modules/ads/ad.routes.js';
 import userRoutes from './modules/users/user.routes.js';
+import notificationRoutes from './modules/notifications/notification.routes.js';
 // import reportRoutes from "./modules/reports/routes";
 // import contactRoutes from "./modules/contact/routes";
-// import notificationRoutes from "./modules/notifications/routes";
 // import adminRoutes from "./modules/admin/routes";
 
 app.use('/api/v1/auth', authRoutes);
@@ -86,9 +91,9 @@ app.use('/api/v1', answerReplyRoutes);
 app.use('/api/v1', answerLikeRoutes);
 app.use('/api/v1/ads', adRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 // app.use("/api/v1/reports", reportRoutes);
 // app.use("/api/v1/contact-requests", contactRoutes);
-// app.use("/api/v1/notifications", notificationRoutes);
 // app.use("/api/v1/admin", adminRoutes);
 
 // -----------------------------

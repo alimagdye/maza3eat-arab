@@ -23,6 +23,9 @@ class AuthService {
                 name,
                 avatar,
                 googleId,
+                tier: {
+                    connect: { name: 'Beginner' },
+                },
             },
         });
     }

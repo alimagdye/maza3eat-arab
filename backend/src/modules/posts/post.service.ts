@@ -152,24 +152,25 @@ class PostService {
                 .split(' ')
                 .filter((word) => word.length > 0);
 
-            where.OR = words.flatMap((word) => [
-                {
+            where.OR = [
+                ...words.map((word) => ({
                     titleNormalized: {
                         contains: word,
                     },
-                },
+                })),
+
                 {
                     tags: {
                         some: {
                             tag: {
                                 normalizedName: {
-                                    equals: word,
+                                    equals: searchQuery,
                                 },
                             },
                         },
                     },
                 },
-            ]);
+            ];
         }
 
         const orderBy =

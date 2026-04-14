@@ -10,6 +10,7 @@ const router = Router();
 
 router.post(
     '/comments/:commentId/replies',
+    replyRateLimiter.preAuthLimiter,
     requireAuth,
     replyRateLimiter.replyToCommentLimiter,
     replyValidation.validateReplyToComment,
@@ -19,6 +20,7 @@ router.post(
 
 router.post(
     '/replies/:replyId/replies',
+    replyRateLimiter.preAuthLimiter,
     requireAuth,
     replyRateLimiter.replyToReplyLimiter,
     replyValidation.validateReplyToReply,
@@ -28,6 +30,7 @@ router.post(
 
 router.delete(
     '/replies/:replyId',
+    replyRateLimiter.preAuthLimiter,
     requireAuth,
     replyRateLimiter.deleteReplyLimiter,
     replyValidation.validateDeleteReply,

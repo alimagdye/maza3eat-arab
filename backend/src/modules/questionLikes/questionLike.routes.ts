@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import likeController from './like.controller.js';
+import likeController from './questionLike.controller.js';
 import { requireAuth } from '../../middlewares/requireAuth.js';
-import likeValidation from './like.validation.js';
+import likeValidation from './questionLike.validation.js';
 import validate from '../../middlewares/validateRequest.js';
-import likeRateLimiter from './like.rateLimiter.js';
+import likeRateLimiter from './questionLike.rateLimiter.js';
 
 const router = Router();
 
