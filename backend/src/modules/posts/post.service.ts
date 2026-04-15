@@ -294,6 +294,7 @@ class PostService {
                 likesCount: true,
                 author: {
                     select: {
+                        id: true,
                         name: true,
                         avatar: true,
                         tier: {
@@ -322,6 +323,7 @@ class PostService {
             content: post?.content,
             publishDate: post?.createdAt,
             author: {
+                id: post?.author.id,
                 name: post?.author.name,
                 avatar: post?.author.avatar,
                 tierName: post?.author.tier?.name ?? null,
