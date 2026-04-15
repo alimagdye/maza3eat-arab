@@ -157,6 +157,7 @@ model Post {
   tags     PostTag[]
   likes    PostLike[]
   homePosts HomePost[]
+  commentReplyNotifications CommentReplyNotification[]
   
   likesCount Int @default(0)
   commentsCount Int @default(0)
@@ -224,6 +225,7 @@ model Comment {
   replies Reply[]
   likes CommentLike[]
   reports Report[]
+  commentReplyNotifications CommentReplyNotification[]
 
   createdAt DateTime @default(now())
 
@@ -246,6 +248,7 @@ model Reply {
   path String
 
   replies       Reply[] @relation("ReplyThread")
+  commentReplyNotifications CommentReplyNotification[]
   likes ReplyLike[]
   reports Report[]
 
@@ -589,7 +592,7 @@ model Notification {
   //postLike        PostLikeNotification?
   //postComment     PostCommentNotification?
   answerReply   AnswerReplyNotification?
-  //commentReply  CommentReplyNotification?  
+  commentReply  CommentReplyNotification?  
   //contact         ContactNotification?
   //admin           AdminNotification?
   //moderation      ModerationNotification?
@@ -616,19 +619,22 @@ model AnswerReplyNotification {
   reply   AnswerReply @relation(fields: [replyId], references: [id], onDelete: Cascade)
 }
 
-//model CommentReplyNotification {
-  //id             String       @id @default(uuid())
+model CommentReplyNotification {
+  id             String       @id @default(uuid())
 
-  //notificationId String       @unique
-  //notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  notificationId String       @unique
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
-  //actorId        String
-  //actor          User         @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  postId         String
+  post           Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  //postId         String
-  //commentId      String
-  //replyId        String
-//}
+  commentId      String
+  comment        Comment      @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  replyId        String
+  reply          Reply        @relation(fields: [replyId], references: [id], onDelete: Cascade)
+}
+
 
 //////////////////////////////////////////////////////
 // ADS

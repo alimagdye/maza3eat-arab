@@ -7,7 +7,6 @@ class UserService {
             select: {
                 id: true,
                 name: true,
-                email: true,
                 avatar: true,
                 tier: {
                     select: {
@@ -32,7 +31,6 @@ class UserService {
         return {
             id: user.id,
             name: user.name,
-            email: user.email,
             avatar: user.avatar,
             tier: user.tier,
             counts:{

@@ -15,6 +15,12 @@ router.get(
     notificationController.getNotifications,
 );
 
-router.get('/:id', requireAuth);
+router.get('/:id', 
+    notificationRateLimiter.preAuthLimiter,
+    requireAuth,
+    notificationRateLimiter.notificationLimiter,
+    notificationValidation.validateGetNotification,
+    notificationController.getNotificationById
+);
 
 export default router;

@@ -16,8 +16,16 @@ router.get(
 );
 
 router.get(
+    '/:userId',
+    userRateLimiter.meLimiter,
+    userValidation.validateGetUser,
+    validate,
+    userController.getUser,
+);
+
+router.get(
     '/:userId/posts',
-    userRateLimiter.userPostsLimiter,
+    userRateLimiter.userPostsOrQuestionsLimiter,
     userValidation.validateUserPostsOrQuestions,
     validate,
     userController.userPosts,
@@ -25,7 +33,7 @@ router.get(
 
 router.get(
     '/:userId/questions',
-    userRateLimiter.userQuestionsLimiter,
+    userRateLimiter.userPostsOrQuestionsLimiter,
     userValidation.validateUserPostsOrQuestions,
     validate,
     userController.userQuestions,

@@ -3,7 +3,7 @@ import NotificationService from './notification.service.js';
 class NotificationController {
     private notificationService = NotificationService;
     getNotifications = async (req: Request, res: Response) => {
-        const userId = req.user.sub;
+        const userId = req.user.sub as string;
         const cursor = req.query.cursor as string | null;
         try {
             const notifications =
@@ -16,6 +16,33 @@ class NotificationController {
             res.status(500).json({
                 status: 'error',
                 message: 'Failed to fetch notifications',
+            });
+        }
+    };
+
+    getNotificationById = async (req: Request, res: Response) => {
+        const userId = req.user.sub as string;
+        const notificationId = req.params.id as string;
+        try {
+            const notification =
+                await this.notificationService.getNotificationById(
+                    userId,
+                    notificationId,
+                );
+            if (!notification) {
+                return res.status(404).json({
+                    status: 'fail',
+                    message: 'Notification not found',
+                });
+            }
+            res.status(200).json({
+                status: 'success',
+                data: notification,
+            });
+        } catch (error) {
+            res.status(500).json({
+                status: 'error',
+                message: 'Failed to fetch notification',
             });
         }
     };

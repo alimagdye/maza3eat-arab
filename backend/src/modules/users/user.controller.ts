@@ -21,6 +21,28 @@ class UserController {
         }
     };
 
+    getUser = async (req: Request, res: Response) => {
+        const userId = req.params.userId as string;
+
+        try {
+            const user = await this.userService.getUserById(userId);
+
+            if (!user)
+                return res
+                    .status(404)
+                    .json({ status: 'fail', message: 'User not found' });
+
+            return res.status(200).json({ status: 'success', data: user });
+        } catch (error) {
+            console.error(error);
+
+            return res.status(500).json({
+                status: 'error',
+                message: 'Internal server error',
+            });
+        }
+    };
+
     userPosts = async (req: Request, res: Response) => {
         const userId = req.params.userId as string;
         const cursor = req.query.cursor as string | null;
