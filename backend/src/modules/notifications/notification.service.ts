@@ -82,6 +82,189 @@ class NotificationService {
 
         return { notifications, nextCursor, hasMore };
     }
+
+    async getNotificationById(userId: string, notificationId: string) {
+        const notification = await prisma.notification.findUnique({
+            where: { id: notificationId },
+            select: {
+                type: true,
+                recipientId: true,
+            },
+        });
+
+        if (!notification || notification.recipientId !== userId) {
+            return null;
+        }
+
+        switch (notification.type) {
+            case 'ANSWER_REPLY':
+                return this.getAnswerReplyNotification(notificationId);
+
+            case 'COMMENT_REPLY':
+                return this.getCommentReplyNotification(notificationId);
+
+            default:
+                return null;
+        }
+    }
+
+    async getAnswerReplyNotification(notificationId: string) {
+        const notification = await prisma.notification.findUnique({
+            where: {
+                id: notificationId,
+            },
+            select: {
+                id: true,
+                type: true,
+                isRead: true,
+                createdAt: true,
+                answerReply: {
+                    select: {
+                        questionId: true,
+                        answer: {
+                            select: {
+                                id: true,
+                                content: true,
+                                author: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        avatar: true,
+                                        tier: {
+                                            select: {
+                                                id: true,
+                                                name: true,
+                                                badgeColor: true,
+                                            },
+                                        },
+                                    },
+                                },
+                                totalVoteValue: true,
+                                repliesCount: true,
+                            },
+                        },
+                        reply: {
+                            select: {
+                                id: true,
+                                content: true,
+                                author: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        avatar: true,
+                                        tier: {
+                                            select: {
+                                                id: true,
+                                                name: true,
+                                                badgeColor: true,
+                                            },
+                                        },
+                                    },
+                                },
+                                likesCount: true,
+                                depth: true,
+                                path: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (notification?.answerReply) {
+            return {
+                notification: {
+                    id: notification.id,
+                    type: notification.type,
+                    isRead: notification.isRead,
+                    createdAt: notification.createdAt,
+                    questionId: notification.answerReply.questionId,
+                    answer: notification.answerReply.answer,
+                    reply: notification.answerReply.reply,
+                },
+            };
+        } else {
+            return null;
+        }
+    }
+
+    async getCommentReplyNotification(notificationId: string) {
+        const notification = await prisma.notification.findUnique({
+            where: {
+                id: notificationId,
+            },
+            select: {
+                id: true,
+                type: true,
+                isRead: true,
+                createdAt: true,
+                commentReply: {
+                    select: {
+                        postId: true,
+                        comment: {
+                            select: {
+                                id: true,
+                                content: true,
+                                author: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        avatar: true,
+                                        tier: {
+                                            select: {
+                                                id: true,
+                                                name: true,
+                                                badgeColor: true,
+                                            },
+                                        },
+                                    },
+                                },
+                                likesCount: true,
+                                repliesCount: true,
+                            },
+                        },
+                        reply: {
+                            select: {
+                                id: true,
+                                content: true,
+                                author: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        avatar: true,
+                                        tier: {
+                                            select: {
+                                                id: true,
+                                                name: true,
+                                                badgeColor: true,
+                                            },
+                                        },
+                                    },
+                                },
+                                likesCount: true,
+                                depth: true,
+                                path: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (notification?.commentReply) {
+            return {
+                notification: {
+                    id: notification.id,
+                    type: notification.type,
+                    isRead: notification.isRead,
+                    createdAt: notification.createdAt,
+                    postId: notification.commentReply.postId,
+                    comment: notification.commentReply.comment,
+                    reply: notification.commentReply.reply,
+                },
+            };
+        } else {
+            return null;
+        }
+    }
 }
 
 export default new NotificationService();

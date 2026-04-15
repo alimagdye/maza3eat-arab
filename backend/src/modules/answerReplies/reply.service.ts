@@ -84,7 +84,6 @@ class ReplyService {
                 },
             });
 
-            // prevent self-notification
             await notificationService.createReplyNotification({
                 tx,
                 recipientId: answer.authorId,
