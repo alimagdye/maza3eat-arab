@@ -246,6 +246,7 @@ class QuestionService {
                 likesCount: true,
                 author: {
                     select: {
+                        id: true,
                         name: true,
                         avatar: true,
                         tier: {
@@ -277,6 +278,7 @@ class QuestionService {
             content: question?.content,
             publishDate: question?.createdAt,
             author: {
+                id: question?.author.id,
                 name: question?.author.name,
                 avatar: question?.author.avatar,
                 tierName: question?.author.tier?.name ?? null,
