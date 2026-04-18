@@ -40,7 +40,7 @@ class ReplyService {
                 segment = replyUtils.nextSegment(lastSegment);
             }
 
-            const path = segment;
+            const path = answer.id + '.' + segment;
 
             const reply = await tx.answerReply.create({
                 data: {
