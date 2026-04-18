@@ -4,6 +4,7 @@ import userController from './user.controller.js';
 import userRateLimiter from './user.rateLimiter.js';
 import userValidation from './user.validation.js';
 import validate from '../../middlewares/validateRequest.js';
+import { optionalAuth } from '../../middlewares/optionalAuth.js';
 
 const router = Router();
 
@@ -17,6 +18,8 @@ router.get(
 
 router.get(
     '/:userId',
+    userRateLimiter.preAuthLimiter,
+    optionalAuth,
     userRateLimiter.meLimiter,
     userValidation.validateGetUser,
     validate,
@@ -25,6 +28,8 @@ router.get(
 
 router.get(
     '/:userId/posts',
+    userRateLimiter.preAuthLimiter,
+    optionalAuth,
     userRateLimiter.userPostsOrQuestionsLimiter,
     userValidation.validateUserPostsOrQuestions,
     validate,
@@ -33,6 +38,8 @@ router.get(
 
 router.get(
     '/:userId/questions',
+    userRateLimiter.preAuthLimiter,
+    optionalAuth,
     userRateLimiter.userPostsOrQuestionsLimiter,
     userValidation.validateUserPostsOrQuestions,
     validate,

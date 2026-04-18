@@ -1,7 +1,7 @@
 import { prisma } from '../../lib/client.js';
 
 class UserService {
-    async getUserById(userId: string) {
+    async getUserById(userId: string, authUserId: string | null = null) {
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: {
@@ -28,19 +28,29 @@ class UserService {
             return null;
         }
 
+        const isOwner = authUserId === userId;
+
         return {
             id: user.id,
             name: user.name,
             avatar: user.avatar,
             tier: user.tier,
-            counts:{
+            counts: {
                 posts: user._count.posts,
                 questions: user._count.questions,
-            }
+            },
+
+            permissions: {
+                canEditProfile: isOwner,
+            },
         };
     }
 
-    async getUserPosts(userId: string, cursor: string | null = null) {
+    async getUserPosts(
+        userId: string,
+        cursor: string | null = null,
+        authUserId: string | null = null,
+    ) {
         const take = 10;
         const posts = await prisma.post.findMany({
             where: { authorId: userId },
@@ -81,6 +91,8 @@ class UserService {
             },
         });
 
+        const isOwner = authUserId === userId;
+
         const hasMore = posts.length === take;
 
         const nextCursor = hasMore ? posts[posts.length - 1].id : null;
@@ -102,6 +114,10 @@ class UserService {
                 name: post.images[0]?.originalName ?? null,
                 remainingImages: Math.max(post._count.images - 1, 0),
             },
+
+            permissions: {
+                canDelete: isOwner,
+            },
         }));
 
         return {
@@ -111,7 +127,11 @@ class UserService {
         };
     }
 
-    async getUserQuestions(userId: string, cursor: string | null) {
+    async getUserQuestions(
+        userId: string,
+        cursor: string | null,
+        authUserId: string | null = null,
+    ) {
         const take = 10;
         const questions = await prisma.question.findMany({
             where: { authorId: userId },
@@ -138,6 +158,8 @@ class UserService {
             },
         });
 
+        const isOwner = authUserId === userId;
+
         const hasMore = questions.length === take;
 
         const nextCursor = hasMore ? questions[questions.length - 1].id : null;
@@ -153,6 +175,9 @@ class UserService {
             publishDate: question.createdAt,
 
             tags: question.tags,
+            permissions: {
+                canDelete: isOwner,
+            },
         }));
 
         return {
