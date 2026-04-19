@@ -4,34 +4,34 @@ Maza3eat Arab website
 ## Backend Setup & Installation
 1. Enter backend directory:
 ``` bash
-    cd backend
+cd backend
 ```
 
 2. Install packages:
 ``` bash
-    npm i
+npm i
 ```
 
 3. Add environment variables based on `.env.example`.
 
 4. Create the database. *(skip this step if you run it via server)*
 ``` bash
-    CREATE DATABASE maza3eat_db;
+CREATE DATABASE maza3eat_db;
 ```
 
 5. Setup and seed your database:
 ``` bash
-    npm run db:seed
+npm run db:setup
 ```
 
 6. Start the server for development:
 ``` bash
-    npm run dev
+npm run dev
 ```
 
 7. View the databse data (optional):
 ``` bash
-    npx prisma studio
+npx prisma studio
 ```
 
 ## Backend Testing & API Documentation
