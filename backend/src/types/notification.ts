@@ -22,4 +22,26 @@ export type CreateReplyNotificationParams =
           postId: string;
           commentId: string;
           replyId: string;
+      }
+    | {
+          tx: Prisma.TransactionClient;
+          recipientId: string;
+          actorId: string;
+
+          type: 'COMMENT_REPLY_REPLY';
+
+          postId: string;
+          parentReplyId: string;
+          replyId: string;
+      }
+    | {
+          tx: Prisma.TransactionClient;
+          recipientId: string;
+          actorId: string;
+
+          type: 'ANSWER_REPLY_REPLY';
+
+          questionId: string;
+          parentReplyId: string;
+          replyId: string;
       };
