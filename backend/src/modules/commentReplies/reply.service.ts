@@ -108,6 +108,7 @@ class ReplyService {
                 where: { id: replyId },
                 select: {
                     id: true,
+                    authorId: true,
                     depth: true,
                     path: true,
                     commentId: true,
@@ -200,15 +201,16 @@ class ReplyService {
                 },
             });
 
-            // await sendReplyNotification({
-            //     tx,
-            //     recipientId: parentReply.authorId,
-            //     actorId: userId,
+            await notificationService.createReplyNotification({
+                tx,
+                recipientId: parent.authorId,
+                actorId: userId,
 
-            //     postId: comment.postId,
-            //     commentId: comment.id,
-            //     replyId: reply.id,
-            // });
+                postId: parent.comment.postId,
+                parentReplyId: parent.id,
+                replyId: reply.id,
+                type: 'COMMENT_REPLY_REPLY',
+            });
 
             return reply;
         });
@@ -376,6 +378,7 @@ class ReplyService {
         replyId: string,
         cursor: string | null = null,
         userId: string | null = null,
+        excludeReplyId: string | null = null,
     ) {
         const pageSize = 10;
 
@@ -392,6 +395,9 @@ class ReplyService {
         const replies = await prisma.reply.findMany({
             where: {
                 parentReplyId: replyId,
+                ...(excludeReplyId && {
+                    NOT: { id: excludeReplyId },
+                }),
             },
 
             take: pageSize,

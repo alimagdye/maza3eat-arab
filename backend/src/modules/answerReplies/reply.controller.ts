@@ -149,12 +149,14 @@ class ReplyController {
         const { replyId } = req.params as { replyId: string };
         const cursor = (req.query.cursor as string) || null;
         const userId = req.user ? req.user.sub : null;
+        const excludeReplyId = (req.query.excludeReplyId as string) || null;
 
         try {
             const result = await this.replyService.getRepliesByReplyId(
                 replyId,
                 cursor,
                 userId,
+                excludeReplyId,
             );
 
             res.json({

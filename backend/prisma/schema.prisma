@@ -38,8 +38,8 @@ enum ReportTargetType {
 enum NotificationType {
   ANSWER_REPLY
   COMMENT_REPLY
-  REPLY_REPLY_POST
-  REPLY_REPLY_QUESTION
+  ANSWER_REPLY_REPLY
+  COMMENT_REPLY_REPLY
   ADMIN
   CONTACT
   COMMENT
@@ -158,6 +158,7 @@ model Post {
   likes    PostLike[]
   homePosts HomePost[]
   commentReplyNotifications CommentReplyNotification[]
+  commentReplyReplyNotifications CommentReplyReplyNotification[]
   
   likesCount Int @default(0)
   commentsCount Int @default(0)
@@ -249,6 +250,8 @@ model Reply {
 
   replies       Reply[] @relation("ReplyThread")
   commentReplyNotifications CommentReplyNotification[]
+  parentReplyReplyNotifications CommentReplyReplyNotification[] @relation("parentCommentReplyReply")
+  commentReplyReplyNotifications CommentReplyReplyNotification[]
   likes ReplyLike[]
   reports Report[]
 
@@ -370,6 +373,7 @@ model Question {
   likes QuestionLike[]
   homeQuestions HomeQuestion[]
   answerReplyNotifications AnswerReplyNotification[]
+  answerReplyReplyNotifications AnswerReplyReplyNotification[]
 
   likesCount Int @default(0)
   answersCount Int @default(0)
@@ -438,6 +442,8 @@ model AnswerReply {
   likes AnswerReplyLike[]
   reports Report[]
   answerReplyNotifications AnswerReplyNotification[]
+  parentReplyReplyNotifications AnswerReplyReplyNotification[] @relation("parentAnswerReplyReply")
+  answerReplyReplyNotifications AnswerReplyReplyNotification[]
 
   createdAt DateTime @default(now())
 
@@ -593,6 +599,8 @@ model Notification {
   //postComment     PostCommentNotification?
   answerReply   AnswerReplyNotification?
   commentReply  CommentReplyNotification?  
+  commentReplyReply CommentReplyReplyNotification?
+  answerReplyReply AnswerReplyReplyNotification?
   //contact         ContactNotification?
   //admin           AdminNotification?
   //moderation      ModerationNotification?
@@ -633,6 +641,38 @@ model CommentReplyNotification {
 
   replyId        String
   reply          Reply        @relation(fields: [replyId], references: [id], onDelete: Cascade)
+}
+
+model CommentReplyReplyNotification {
+  id             String       @id @default(uuid())
+
+  notificationId String       @unique
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  postId         String
+  post           Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  parentReplyId  String
+  parentReply    Reply        @relation("parentCommentReplyReply", fields: [parentReplyId], references: [id], onDelete: Cascade)
+
+  replyId        String
+  reply          Reply        @relation(fields: [replyId], references: [id], onDelete: Cascade)
+}
+
+model AnswerReplyReplyNotification {
+  id             String       @id @default(uuid())
+
+  notificationId String       @unique
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  parentReplyId String
+  parentReply   AnswerReply @relation("parentAnswerReplyReply", fields: [parentReplyId], references: [id], onDelete: Cascade)
+
+  replyId String
+  reply   AnswerReply @relation(fields: [replyId], references: [id], onDelete: Cascade)
 }
 
 

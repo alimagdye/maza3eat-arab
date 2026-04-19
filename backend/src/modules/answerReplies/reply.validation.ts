@@ -47,6 +47,10 @@ const replyValidation: {
             .optional()
             .isUUID()
             .withMessage('Invalid cursor format'),
+        query('excludeReplyId')
+            .optional()
+            .isUUID()
+            .withMessage('Invalid excludeReplyId format'),
     ],
 };
 
