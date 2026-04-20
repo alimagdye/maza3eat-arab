@@ -23,7 +23,7 @@
         "db:setup:prod": "prisma generate && prisma migrate deploy && prisma db seed"
     },
     "prisma": {
-        "seed": "node prisma/seed.js"
+        "seed": "tsx prisma/seed.js"
     },
     "author": "Ali Magdy",
     "license": "MIT",

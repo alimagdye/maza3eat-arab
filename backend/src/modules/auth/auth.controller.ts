@@ -1,8 +1,72 @@
 import { Request, Response } from 'express';
 import AuthService from './auth.service.js';
+import { prisma } from '../../lib/client.js';
+import jwt from 'jsonwebtoken';
 
 class AuthController {
     private authService = AuthService;
+
+    me = async (req: Request, res: Response) => {
+        try {
+            const token = req.cookies.accessToken;
+
+            if (!token) {
+                return res.status(401).json({
+                    status: 'fail',
+                    message: 'No access token',
+                });
+            }
+
+            // Verify and decode the token
+            const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+            const userId = decoded.sub;
+
+            // Fetch full user data from database
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    avatar: true,
+                    role: true,
+                    tier: {
+                        select: {
+                            name: true,
+                            description: true,
+                            badgeColor: true,
+                        },
+                    },
+                },
+            });
+
+            if (!user) {
+                return res.status(404).json({
+                    status: 'fail',
+                    message: 'User not found',
+                });
+            }
+
+            return res.status(200).json({
+                status: 'success',
+                data: user,
+            });
+        } catch (error: any) {
+            console.error('[AUTH] Error in /me endpoint:', error);
+
+            if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+                return res.status(401).json({
+                    status: 'fail',
+                    message: 'Invalid or expired token',
+                });
+            }
+
+            return res.status(500).json({
+                status: 'error',
+                message: 'Internal server error',
+            });
+        }
+    };
 
     logout = async (req: Request, res: Response) => {
         const refreshToken = req.cookies?.refreshToken;

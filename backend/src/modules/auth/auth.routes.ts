@@ -4,6 +4,7 @@ import authValidation from './auth.validation.js';
 import validate from '../../middlewares/validateRequest.js';
 import authRateLimiter from './auth.rateLimiter.js';
 import authController from './auth.controller.js';
+import codeDeduplication from '../../middlewares/codeDeduplication.js';
 const router = express.Router();
 
 router.get(
@@ -15,6 +16,7 @@ router.get(
 router.get(
     '/google/callback',
     authRateLimiter.oauthRateLimiter,
+    codeDeduplication.deduplicateOAuthCode,
     authValidation.validateHandleCallback,
     validate,
     googleAuthController.handleCallback,
@@ -30,6 +32,11 @@ router.post(
     '/refresh-token',
     authRateLimiter.refreshTokenRateLimiter,
     authController.refresh,
+);
+
+router.get(
+    '/me',
+    authController.me,
 );
 
 export default router;
