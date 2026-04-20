@@ -1,9 +1,10 @@
 import { prisma } from '../../lib/client.js';
 import replyUtils from './reply.utils.js';
-import notificationService from '../notifications/notification.service.js';
+import NotificationService from '../notifications/notification.service.js';
 
 class ReplyService {
     private MAX_DEPTH = 10;
+    private notificationService = NotificationService;
     async replyToComment(commentId: string, userId: string, content: string) {
         const result = await prisma.$transaction(async (tx) => {
             await tx.$executeRaw`
@@ -94,7 +95,7 @@ class ReplyService {
             return { reply, comment };
         });
 
-        await notificationService.createReplyNotification({
+        await this.notificationService.createReplyNotification({
             recipientId: result.comment.authorId,
             actorId: userId,
 
@@ -217,7 +218,7 @@ class ReplyService {
             return { reply, parent };
         });
 
-        await notificationService.createReplyNotification({
+        await this.notificationService.createReplyNotification({
             recipientId: result.parent.authorId,
             actorId: userId,
 

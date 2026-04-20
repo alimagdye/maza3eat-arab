@@ -97,7 +97,8 @@ model User {
   receivedContactRequests ContactRequest[] @relation("ReceivedRequests")
 
   notifications   Notification[] @relation("Recipient")
-  notificationActor Notification[] @relation
+  lastNotificationActor Notification[] @relation("lastActor")
+  notificationActors NotificationActor[]
   reports         Report[]       @relation("UserReports")
   reviewedReports Report[]       @relation("AdminReviewedReports")
 
@@ -159,6 +160,7 @@ model Post {
   homePosts HomePost[]
   commentReplyNotifications CommentReplyNotification[]
   commentReplyReplyNotifications CommentReplyReplyNotification[]
+  postCommentNotifications PostCommentNotification[]
   
   likesCount Int @default(0)
   commentsCount Int @default(0)
@@ -227,6 +229,7 @@ model Comment {
   likes CommentLike[]
   reports Report[]
   commentReplyNotifications CommentReplyNotification[]
+  postCommentNotifications PostCommentNotification[]
 
   createdAt DateTime @default(now())
 
@@ -374,6 +377,7 @@ model Question {
   homeQuestions HomeQuestion[]
   answerReplyNotifications AnswerReplyNotification[]
   answerReplyReplyNotifications AnswerReplyReplyNotification[]
+  questionAnswerNotifications QuestionAnswerNotification[]
 
   likesCount Int @default(0)
   answersCount Int @default(0)
@@ -417,6 +421,7 @@ model Answer {
   answerReplies AnswerReply[]
   reports Report[]
   answerReplyNotifications AnswerReplyNotification[]
+  questionAnswerNotifications QuestionAnswerNotification[]
 
   createdAt DateTime @default(now())
 
@@ -582,33 +587,46 @@ model Notification {
   // read state
   isRead      Boolean  @default(false)
 
-  // aggregation key (e.g., "POST_LIKE:postId")
-  //groupKey    String?
+  // aggregation key (e.g., "POST_LIKE:postId") 
+  groupKey String? 
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now()) 
+  lastActivityAt DateTime @default(now()) // used for sorting 
 
-  lastActorId String
-  lastActor   User @relation( fields: [lastActorId], references: [id], onDelete: Cascade)
+  lastActorId String 
+  lastActor User @relation("lastActor", fields: [lastActorId], references: [id], onDelete: Cascade) 
 
-  // aggregation actors (only used for aggregated types)
-  //actors      NotificationActor[]
+  numberOfActors Int @default(1) // for aggregated notifications, counts how many actors are involved 
+  actors NotificationActor[] // relation to track all actors involved in this notification
 
   // subtypes
   //postLike        PostLikeNotification?
-  //postComment     PostCommentNotification?
-  answerReply   AnswerReplyNotification?
+  postComment PostCommentNotification?
+  questionAnswer QuestionAnswerNotification?
   commentReply  CommentReplyNotification?  
+  answerReply   AnswerReplyNotification?
   commentReplyReply CommentReplyReplyNotification?
   answerReplyReply AnswerReplyReplyNotification?
   //contact         ContactNotification?
   //admin           AdminNotification?
   //moderation      ModerationNotification?
 
-  @@index([recipientId, createdAt(sort: Desc)])
-  //@@index([recipientId, groupKey])
-  @@index([recipientId, isRead])
-  @@index([recipientId, createdAt, id])
+  @@index([recipientId, lastActivityAt(sort: Desc)]) 
+  @@index([recipientId, groupKey]) 
+  @@index([recipientId, isRead]) 
+  @@index([recipientId, lastActivityAt, id])
+}
+
+model NotificationActor { 
+  id String @id @default(uuid()) 
+
+  notificationId String 
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  actorId String 
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade) 
+  
+  @@unique([notificationId, actorId]) 
 }
 
 model AnswerReplyNotification {
@@ -675,6 +693,31 @@ model AnswerReplyReplyNotification {
   reply   AnswerReply @relation(fields: [replyId], references: [id], onDelete: Cascade)
 }
 
+model PostCommentNotification {
+  id String @id @default(uuid())
+
+  notificationId String @unique 
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  postId String 
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade) // last comment preview 
+  
+  lastCommentId String?
+  lastComment Comment? @relation(fields: [lastCommentId], references: [id], onDelete: SetNull) 
+}
+
+model QuestionAnswerNotification {
+  id String @id @default(uuid())
+
+  notificationId String @unique 
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  questionId String 
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade) // last comment preview 
+  
+  lastAnswerId String?
+  lastAnswer Answer? @relation(fields: [lastAnswerId], references: [id], onDelete: SetNull) 
+}
 
 //////////////////////////////////////////////////////
 // ADS

@@ -1,11 +1,13 @@
 import { prisma } from '../../lib/client.js';
+import NotificationService from '../notifications/notification.service.js';
 
 class CommentService {
+    private notificationService = NotificationService;
     async createComment(postId: string, userId: string, content: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const post = await tx.post.findUnique({
                 where: { id: postId },
-                select: { id: true, status: true },
+                select: { id: true, status: true, authorId: true},
             });
 
             if (!post || post.status !== 'APPROVED') {
@@ -44,8 +46,16 @@ class CommentService {
                 },
             });
 
-            return comment;
+            return { comment, post };
         });
+        this.notificationService.createCommentOrAnswerNotification({
+            recipientId: result.post.authorId,
+            actorId: userId,
+            postId,
+            commentId: result.comment.id,
+            type: 'COMMENT',
+        });
+        return result.comment;
     }
 
     async getCommentsByPostId(
@@ -155,6 +165,7 @@ class CommentService {
             }
 
             if (comment.authorId !== userId) {
+                console.log(comment.authorId, userId);
                 throw new Error('UNAUTHORIZED');
             }
 

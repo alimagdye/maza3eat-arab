@@ -3,9 +3,9 @@ import { prisma } from '../src/lib/client.ts';
 async function main() {
     await prisma.tier.createMany({
         data: [
-            { name: 'Beginner', badgeColor: '#bbbbbb' },
-            { name: 'Intermediate', badgeColor: '#4caf50' },
-            { name: 'Pro', badgeColor: '#ff9800' },
+            { name: 'مبتدئ', badgeColor: '#bbbbbb' },
+            { name: 'متوسط', badgeColor: '#4caf50' },
+            { name: 'محترف', badgeColor: '#ff9800' },
         ],
         skipDuplicates: true,
     });
