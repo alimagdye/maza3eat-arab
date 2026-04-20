@@ -4,7 +4,13 @@ import notificationService from '../notifications/notification.service.js';
 class ReplyService {
     private MAX_DEPTH = 10;
     async replyToAnswer(answerId: string, userId: string, content: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`
+                SELECT id FROM "Answer"
+                WHERE id = ${answerId}
+                FOR UPDATE
+            `;
+
             const answer = await tx.answer.findUnique({
                 where: { id: answerId },
                 select: {
@@ -84,25 +90,32 @@ class ReplyService {
                 },
             });
 
-            await notificationService.createReplyNotification({
-                tx,
-                recipientId: answer.authorId,
-                actorId: userId,
-
-                questionId: answer.questionId,
-                answerId: answer.id,
-                replyId: reply.id,
-                type: 'ANSWER_REPLY',
-            });
-
-            return reply;
+            return { reply, answer };
         });
+
+        await notificationService.createReplyNotification({
+            recipientId: result.answer.authorId,
+            actorId: userId,
+
+            questionId: result.answer.questionId,
+            answerId: result.answer.id,
+            replyId: result.reply.id,
+            type: 'ANSWER_REPLY',
+        });
+
+        return result.reply;
     }
 
     async replyToReply(replyId: string, userId: string, content: string) {
         const MAX_DEPTH = this.MAX_DEPTH;
 
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`
+                SELECT id FROM "AnswerReply"
+                WHERE id = ${replyId}
+                FOR UPDATE
+            `;
+
             const parent = await tx.answerReply.findUnique({
                 where: { id: replyId },
                 select: {
@@ -200,19 +213,20 @@ class ReplyService {
                 },
             });
 
-            await notificationService.createReplyNotification({
-                tx,
-                recipientId: parent.authorId,
-                actorId: userId,
-
-                questionId: parent.answer.questionId,
-                parentReplyId: parent.id,
-                replyId: reply.id,
-                type: 'ANSWER_REPLY_REPLY',
-            });
-
-            return reply;
+            return { reply, parent };
         });
+
+        await notificationService.createReplyNotification({
+            recipientId: result.parent.authorId,
+            actorId: userId,
+
+            questionId: result.parent.answer.questionId,
+            parentReplyId: result.parent.id,
+            replyId: result.reply.id,
+            type: 'ANSWER_REPLY_REPLY',
+        });
+
+        return result.reply;
     }
 
     async deleteReply(replyId: string, userId: string) {

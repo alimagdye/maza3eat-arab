@@ -2,7 +2,7 @@ import { CreateReplyNotificationParams } from '../../types/notification.js';
 import { prisma } from '../../lib/client.js';
 class NotificationService {
     async createReplyNotification(params: CreateReplyNotificationParams) {
-        const { tx, recipientId, actorId, type, replyId } = params;
+        const { recipientId, actorId, type, replyId } = params;
         if (recipientId === actorId) return;
         const data: any = {
             type,
@@ -46,7 +46,7 @@ class NotificationService {
             };
         }
 
-        await tx.notification.create({ data });
+        await prisma.notification.create({ data });
     }
 
     async getNotifications(userId: string, cursor: string | null) {
