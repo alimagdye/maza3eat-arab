@@ -1,5 +1,6 @@
 import multer from 'multer';
 import { Request, Response, NextFunction } from 'express';
+import busboy from 'busboy';
 
 const storage = multer.memoryStorage();
 
@@ -25,42 +26,63 @@ export const uploadPostImages = (
     res: Response,
     next: NextFunction,
 ) => {
-    upload(req, res, function (error) {
-        if (error instanceof multer.MulterError) {
-            if (error.code === 'LIMIT_FILE_SIZE') {
-                return res.status(400).json({
-                    status: 'fail',
-                    message: 'Image too large (max 10MB)',
-                });
-            }
+    // First, parse the multipart data to extract text fields
+    const bb = busboy({ headers: req.headers });
+    const fields: { [key: string]: string } = {};
+    const files: Express.Multer.File[] = [];
 
-            if (error.code === 'LIMIT_FILE_COUNT') {
-                return res.status(400).json({
-                    status: 'fail',
-                    message: 'Max 6 images allowed',
-                });
-            }
+    bb.on('field', (fieldname, val) => {
+        fields[fieldname] = val;
+    });
 
-            if (error.message === 'Only image files allowed') {
-                return res.status(400).json({
-                    status: 'fail',
-                    message: error.message,
-                });
-            }
-
-            return res.status(400).json({
-                status: 'fail',
-                message: error.message,
+    bb.on('file', (fieldname, file, info) => {
+        if (fieldname === 'images') {
+            const chunks: Buffer[] = [];
+            file.on('data', (chunk) => {
+                chunks.push(chunk);
             });
+            file.on('end', () => {
+                files.push({
+                    fieldname,
+                    originalname: info.filename,
+                    encoding: info.encoding,
+                    mimetype: info.mimeType,
+                    buffer: Buffer.concat(chunks),
+                    size: Buffer.concat(chunks).length,
+                } as Express.Multer.File);
+            });
+        } else {
+            file.resume();
+        }
+    });
+
+    bb.on('close', () => {
+        // Initialize req.body if it doesn't exist
+        if (!req.body) req.body = {};
+        
+        // Set parsed fields to req.body
+        req.body.title = fields.title;
+        req.body.content = fields.content;
+        
+        // Parse tags from JSON string
+        try {
+            req.body.tags = fields.tags ? JSON.parse(fields.tags) : [];
+        } catch (e) {
+            req.body.tags = [];
         }
 
-        if (error) {
-            return res.status(400).json({
-                status: 'fail',
-                message: error.message,
-            });
-        }
+        // Set files for multer-like behavior
+        req.files = files as any;
 
         next();
     });
+
+    bb.on('error', (error) => {
+        return res.status(400).json({
+            status: 'fail',
+            message: 'Error parsing form data: ' + error.message,
+        });
+    });
+
+    req.pipe(bb);
 };

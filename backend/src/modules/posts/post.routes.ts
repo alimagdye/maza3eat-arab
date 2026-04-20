@@ -16,9 +16,9 @@ router.post(
     postRateLimiter.preAuthLimiter,
     requireAuth,
     postRateLimiter.createPostLimiter,
+    uploadPostImages,
     postValidation.validateCreatePost,
     validate,
-    uploadPostImages,
     postController.createPost,
 );
 
