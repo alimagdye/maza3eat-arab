@@ -1,8 +1,5 @@
-import { Prisma } from '@prisma/client';
-
 export type CreateReplyNotificationParams =
     | {
-          tx: Prisma.TransactionClient;
           recipientId: string;
           actorId: string;
 
@@ -13,7 +10,6 @@ export type CreateReplyNotificationParams =
           replyId: string;
       }
     | {
-          tx: Prisma.TransactionClient;
           recipientId: string;
           actorId: string;
 
@@ -24,7 +20,6 @@ export type CreateReplyNotificationParams =
           replyId: string;
       }
     | {
-          tx: Prisma.TransactionClient;
           recipientId: string;
           actorId: string;
 
@@ -35,7 +30,6 @@ export type CreateReplyNotificationParams =
           replyId: string;
       }
     | {
-          tx: Prisma.TransactionClient;
           recipientId: string;
           actorId: string;
 
