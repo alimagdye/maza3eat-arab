@@ -272,7 +272,14 @@ class PostService {
 
     async getPostById(postId: string, userId: string | null) {
         const post = await prisma.post.findFirst({
-            where: { id: postId, status: 'APPROVED' },
+            where: {
+                id: postId,
+                OR: [
+                    { status: 'APPROVED' },
+                    // Allow post owner to see their own posts regardless of status
+                    ...(userId ? [{ authorId: userId }] : []),
+                ],
+            },
             select: {
                 title: true,
                 content: true,
