@@ -1,11 +1,13 @@
 import { prisma } from '../../lib/client.js';
+import NotificationService from '../notifications/notification.service.js';
 
 class AnswerService {
+    private notificationService = NotificationService;
     async createAnswer(questionId: string, userId: string, content: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const question = await tx.question.findUnique({
                 where: { id: questionId },
-                select: { id: true, status: true },
+                select: { id: true, status: true, authorId: true },
             });
 
             if (!question || question.status !== 'APPROVED') {
@@ -44,8 +46,17 @@ class AnswerService {
                 },
             });
 
-            return answer;
+            return { answer, question };
         });
+        this.notificationService.createCommentOrAnswerNotification({
+            recipientId: result.question.authorId,
+            actorId: userId,
+            questionId,
+            answerId: result.answer.id,
+            type: 'ANSWER',
+        });
+
+        return result.answer;
     }
 
     async getAnswersByQuestionId(

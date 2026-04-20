@@ -39,3 +39,23 @@ export type CreateReplyNotificationParams =
           parentReplyId: string;
           replyId: string;
       };
+
+export type CreateCommentNotificationParams =
+    | {
+          recipientId: string;
+          actorId: string;
+
+          type: 'COMMENT';
+
+          postId: string;
+          commentId: string;
+      }
+    | {
+          recipientId: string;
+          actorId: string;
+
+          type: 'ANSWER';
+
+          questionId: string;
+          answerId: string;
+      };
