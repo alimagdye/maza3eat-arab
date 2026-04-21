@@ -43,9 +43,12 @@ enum NotificationType {
   ADMIN
   CONTACT
   COMMENT
-  LIKE
+  POST_LIKE
+  QUESTION_LIKE
   ANSWER
   REPORT
+  POST_APPROVAL
+  QUESTION_APPROVAL
 }
 
 enum ContactRequestStatus {
@@ -161,6 +164,7 @@ model Post {
   commentReplyNotifications CommentReplyNotification[]
   commentReplyReplyNotifications CommentReplyReplyNotification[]
   postCommentNotifications PostCommentNotification[]
+  postLikeNotifications PostLikeNotification[]
   
   likesCount Int @default(0)
   commentsCount Int @default(0)
@@ -168,9 +172,9 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([status, createdAt, id])
-  @@index([status, commentsCount, id])
-  @@index([authorId, createdAt, id])
+  @@index([status, createdAt(sort: Desc), id])
+  @@index([status, commentsCount(sort: Desc), id])
+  @@index([authorId, createdAt(sort: Desc), id])
   @@index([titleNormalized])
 }
 
@@ -233,7 +237,7 @@ model Comment {
 
   createdAt DateTime @default(now())
 
-  @@index([postId, createdAt, id])
+  @@index([postId, createdAt(sort: Desc), id])
   @@index([authorId])
 }
 
@@ -378,6 +382,7 @@ model Question {
   answerReplyNotifications AnswerReplyNotification[]
   answerReplyReplyNotifications AnswerReplyReplyNotification[]
   questionAnswerNotifications QuestionAnswerNotification[]
+  questionLikeNotifications QuestionLikeNotification[]
 
   likesCount Int @default(0)
   answersCount Int @default(0)
@@ -385,9 +390,9 @@ model Question {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([status, createdAt, id])
-  @@index([status, answersCount, id])
-  @@index([authorId, createdAt, id])
+  @@index([status, createdAt(sort: Desc), id])
+  @@index([status, answersCount(sort: Desc), id])
+  @@index([authorId, createdAt(sort: Desc), id])
   @@index([titleNormalized])
 }
 
@@ -425,7 +430,7 @@ model Answer {
 
   createdAt DateTime @default(now())
 
-  @@index([questionId, totalVoteValue, id])
+  @@index([questionId, totalVoteValue(sort: Desc), id])
   @@index([authorId])
 }
 
@@ -600,7 +605,8 @@ model Notification {
   actors NotificationActor[] // relation to track all actors involved in this notification
 
   // subtypes
-  //postLike        PostLikeNotification?
+  postLike        PostLikeNotification?
+  questionLike     QuestionLikeNotification?
   postComment PostCommentNotification?
   questionAnswer QuestionAnswerNotification?
   commentReply  CommentReplyNotification?  
@@ -718,6 +724,39 @@ model QuestionAnswerNotification {
   lastAnswerId String?
   lastAnswer Answer? @relation(fields: [lastAnswerId], references: [id], onDelete: SetNull) 
 }
+
+model PostLikeNotification {
+  id String @id @default(uuid())
+
+  notificationId String @unique 
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  postId String 
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade) // liked post preview 
+}
+
+model QuestionLikeNotification {
+  id String @id @default(uuid())
+
+  notificationId String @unique 
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  questionId String 
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade) // liked question preview 
+}
+
+//model ModerationNotification {
+  //id String @id @default(uuid())
+
+  //notificationId String @unique 
+  //notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  //postId String?
+  //post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  //questionId String?
+  //question Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+//}
 
 //////////////////////////////////////////////////////
 // ADS

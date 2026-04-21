@@ -59,3 +59,21 @@ export type CreateCommentNotificationParams =
           questionId: string;
           answerId: string;
       };
+
+export type CreatePostOrQuestionLikeNotificationParams =
+    | {
+          recipientId: string;
+          actorId: string;
+
+          type: 'POST_LIKE';
+
+          postId: string;
+      }
+    | {
+          recipientId: string;
+          actorId: string;
+
+          type: 'QUESTION_LIKE';
+
+          questionId: string;
+      };

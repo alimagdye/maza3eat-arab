@@ -1,6 +1,7 @@
 import {
     CreateReplyNotificationParams,
     CreateCommentNotificationParams,
+    CreatePostOrQuestionLikeNotificationParams,
 } from '../../types/notification.js';
 import { prisma } from '../../lib/client.js';
 class NotificationService {
@@ -57,131 +58,114 @@ class NotificationService {
     ) {
         const { recipientId, actorId, type } = params;
 
-        // prevent self notification
         if (recipientId === actorId) return;
 
         const groupKey =
             type === 'COMMENT'
                 ? `POST_COMMENT:${params.postId}`
                 : `QUESTION_ANSWER:${params.questionId}`;
+
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const now = new Date();
 
-        // 1. find existing notification
-        const existing = await prisma.notification.findFirst({
-            where: {
-                recipientId,
-                type,
-                groupKey,
-                createdAt: {
-                    gte: oneHourAgo,
-                },
-            },
-            select: {
-                id: true,
-            },
-        });
-
-        // 2. if exists: update
-        if (existing) {
-            // check if actor already exists
-            const existingActor = await prisma.notificationActor.findUnique({
+        await prisma.$transaction(async (tx) => {
+            // 1. find existing (INSIDE transaction)
+            const existing = await tx.notification.findFirst({
                 where: {
-                    notificationId_actorId: {
-                        notificationId: existing.id,
-                        actorId,
+                    recipientId,
+                    type,
+                    groupKey,
+                    createdAt: {
+                        gte: oneHourAgo,
                     },
                 },
                 select: { id: true },
             });
 
-            // update notification
-            await prisma.notification.update({
-                where: { id: existing.id },
-                data: {
-                    lastActorId: actorId,
-                    isRead: false,
-                    lastActivityAt: new Date(),
+            // 2. update existing
+            if (existing) {
+                const existingActor = await tx.notificationActor.findUnique({
+                    where: {
+                        notificationId_actorId: {
+                            notificationId: existing.id,
+                            actorId,
+                        },
+                    },
+                    select: { id: true },
+                });
 
-                    ...(existingActor
-                        ? {} // actor already counted
-                        : {
-                              numberOfActors: {
-                                  increment: 1,
-                              },
-                          }),
-                },
-            });
-
-            // update subtype
-            if (type === 'COMMENT') {
-                await prisma.postCommentNotification.update({
-                    where: { notificationId: existing.id },
+                await tx.notification.update({
+                    where: { id: existing.id },
                     data: {
-                        lastCommentId: params.commentId,
+                        lastActorId: actorId,
+                        isRead: false,
+                        lastActivityAt: now,
+                        ...(existingActor
+                            ? {}
+                            : {
+                                  numberOfActors: {
+                                      increment: 1,
+                                  },
+                              }),
                     },
                 });
-            }
-            if (type === 'ANSWER') {
-                await prisma.questionAnswerNotification.update({
-                    where: { notificationId: existing.id },
-                    data: {
-                        lastAnswerId: params.answerId,
-                    },
-                });
-            }
 
-            // add actor only if new
-            if (!existingActor) {
-                await prisma.notificationActor.create({
-                    data: {
-                        notificationId: existing.id,
-                        actorId,
-                    },
-                });
-            }
-
-            return;
-        }
-        // else: create new notification
-        if (type === 'COMMENT') {
-            await prisma.notification.create({
-                data: {
-                    type,
-                    recipientId,
-                    groupKey,
-                    lastActorId: actorId,
-                    lastActivityAt: new Date(),
-
-                    postComment: {
-                        create: {
-                            postId: params.postId,
+                // subtype update
+                if (type === 'COMMENT') {
+                    await tx.postCommentNotification.update({
+                        where: { notificationId: existing.id },
+                        data: {
                             lastCommentId: params.commentId,
                         },
-                    },
+                    });
+                } else {
+                    await tx.questionAnswerNotification.update({
+                        where: { notificationId: existing.id },
+                        data: {
+                            lastAnswerId: params.answerId,
+                        },
+                    });
+                }
 
-                    actors: {
-                        create: {
+                // insert actor if new
+                if (!existingActor) {
+                    await tx.notificationActor.create({
+                        data: {
+                            notificationId: existing.id,
                             actorId,
                         },
-                    },
-                },
-            });
-        }
-        if (type === 'ANSWER') {
-            await prisma.notification.create({
+                    });
+                }
+
+                return;
+            }
+
+            // 3. create new notification
+            await tx.notification.create({
                 data: {
                     type,
                     recipientId,
                     groupKey,
                     lastActorId: actorId,
-                    lastActivityAt: new Date(),
+                    lastActivityAt: now,
 
-                    questionAnswer: {
-                        create: {
-                            questionId: params.questionId,
-                            lastAnswerId: params.answerId,
-                        },
-                    },
+                    ...(type === 'COMMENT'
+                        ? {
+                              postComment: {
+                                  create: {
+                                      postId: params.postId,
+                                      lastCommentId: params.commentId,
+                                  },
+                              },
+                          }
+                        : {
+                              questionAnswer: {
+                                  create: {
+                                      questionId: params.questionId,
+                                      lastAnswerId: params.answerId,
+                                  },
+                              },
+                          }),
 
                     actors: {
                         create: {
@@ -190,7 +174,114 @@ class NotificationService {
                     },
                 },
             });
-        }
+        });
+    }
+
+    async createPostOrQuestionLikeNotification(
+        params: CreatePostOrQuestionLikeNotificationParams,
+    ) {
+        const { recipientId, actorId, type } = params;
+
+        // prevent self notification
+        if (recipientId === actorId) return;
+
+        const groupKey =
+            type === 'POST_LIKE'
+                ? `POST_LIKE:${params.postId}`
+                : `QUESTION_LIKE:${params.questionId}`;
+
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const now = new Date();
+
+        await prisma.$transaction(async (tx) => {
+            // 1. find existing (INSIDE transaction)
+            const existing = await tx.notification.findFirst({
+                where: {
+                    recipientId,
+                    type,
+                    groupKey,
+                    createdAt: {
+                        gte: oneHourAgo,
+                    },
+                },
+                select: { id: true },
+            });
+
+            // 2. if exists update
+            if (existing) {
+                const existingActor = await tx.notificationActor.findUnique({
+                    where: {
+                        notificationId_actorId: {
+                            notificationId: existing.id,
+                            actorId,
+                        },
+                    },
+                    select: { id: true },
+                });
+
+                // update notification
+                await tx.notification.update({
+                    where: { id: existing.id },
+                    data: {
+                        lastActorId: actorId,
+                        isRead: false,
+                        lastActivityAt: now,
+                        ...(existingActor
+                            ? {}
+                            : {
+                                  numberOfActors: {
+                                      increment: 1,
+                                  },
+                              }),
+                    },
+                });
+
+                // add actor only if new
+                if (!existingActor) {
+                    await tx.notificationActor.create({
+                        data: {
+                            notificationId: existing.id,
+                            actorId,
+                        },
+                    });
+                }
+
+                return;
+            }
+
+            // 3. create new notification
+            await tx.notification.create({
+                data: {
+                    type,
+                    recipientId,
+                    groupKey,
+                    lastActorId: actorId,
+                    lastActivityAt: now,
+
+                    ...(type === 'POST_LIKE'
+                        ? {
+                              postLike: {
+                                  create: {
+                                      postId: params.postId,
+                                  },
+                              },
+                          }
+                        : {
+                              questionLike: {
+                                  create: {
+                                      questionId: params.questionId,
+                                  },
+                              },
+                          }),
+
+                    actors: {
+                        create: {
+                            actorId,
+                        },
+                    },
+                },
+            });
+        });
     }
 
     async getNotifications(userId: string, cursor: string | null) {
@@ -266,6 +357,10 @@ class NotificationService {
                 return this.getCommentNotification(notificationId);
             case 'ANSWER':
                 return this.getAnswerNotification(notificationId);
+            case 'POST_LIKE':
+                return this.getPostLikeNotification(notificationId);
+            case 'QUESTION_LIKE':
+                return this.getQuestionLikeNotification(notificationId);
             default:
                 return null;
         }
@@ -717,6 +812,70 @@ class NotificationService {
                 lastAnswerId,
             },
         };
+    }
+
+    async getQuestionLikeNotification(notificationId: string) {
+        const notification = await prisma.notification.findUnique({
+            where: { id: notificationId },
+            select: {
+                id: true,
+                type: true,
+                isRead: true,
+                createdAt: true,
+                lastActivityAt: true,
+                questionLike: {
+                    select: {
+                        questionId: true,
+                    },
+                },
+            },
+        });
+
+        if (notification?.questionLike) {
+            return {
+                notification: {
+                    id: notification.id,
+                    type: notification.type,
+                    isRead: notification.isRead,
+                    createdAt: notification.createdAt,
+                    questionId: notification.questionLike.questionId,
+                },
+            };
+        } else {
+            return null;
+        }
+    }
+
+    async getPostLikeNotification(notificationId: string) {
+        const notification = await prisma.notification.findUnique({
+            where: { id: notificationId },
+            select: {
+                id: true,
+                type: true,
+                isRead: true,
+                createdAt: true,
+                lastActivityAt: true,
+                postLike: {
+                    select: {
+                        postId: true,
+                    },
+                },
+            },
+        });
+
+        if (notification?.postLike) {
+            return {
+                notification: {
+                    id: notification.id,
+                    type: notification.type,
+                    isRead: notification.isRead,
+                    createdAt: notification.createdAt,
+                    postId: notification.postLike.postId,
+                },
+            };
+        } else {
+            return null;
+        }
     }
 }
 

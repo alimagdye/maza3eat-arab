@@ -1,18 +1,28 @@
 import { prisma } from '../../lib/client.js';
+import NotificationService from '../notifications/notification.service.js';
 
 class LikeService {
+    private notificationService = NotificationService;
     async likePost(userId: string, postId: string) {
-        await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             await tx.postLike.create({
                 data: { userId, postId },
             });
 
-            await tx.post.update({
+            return await tx.post.update({
                 where: { id: postId },
                 data: {
                     likesCount: { increment: 1 },
                 },
+                select: { authorId: true },
             });
+        });
+
+        await this.notificationService.createPostOrQuestionLikeNotification({
+            recipientId: result.authorId,
+            actorId: userId,
+            postId,
+            type: 'POST_LIKE',
         });
     }
 
