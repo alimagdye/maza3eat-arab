@@ -48,7 +48,7 @@ class AnswerService {
 
             return { answer, question };
         });
-        this.notificationService.createCommentOrAnswerNotification({
+        await this.notificationService.createCommentOrAnswerNotification({
             recipientId: result.question.authorId,
             actorId: userId,
             questionId,

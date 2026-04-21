@@ -48,7 +48,7 @@ class CommentService {
 
             return { comment, post };
         });
-        this.notificationService.createCommentOrAnswerNotification({
+        await this.notificationService.createCommentOrAnswerNotification({
             recipientId: result.post.authorId,
             actorId: userId,
             postId,
