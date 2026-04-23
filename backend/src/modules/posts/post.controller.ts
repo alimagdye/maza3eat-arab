@@ -11,7 +11,17 @@ class PostController {
 
         const files = req.files as Express.Multer.File[];
 
-        if (!files || files.length < 1) {
+        // -------------------------
+        // 1. Basic validation (cheap checks only)
+        // -------------------------
+        if (!Array.isArray(tags)) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'Tags must be an array',
+            });
+        }
+
+        if (!files || files.length === 0) {
             return res.status(400).json({
                 status: 'fail',
                 message: 'At least 1 image required',
@@ -25,13 +35,26 @@ class PostController {
             });
         }
 
+        let uploads: {
+            url: string;
+            publicId: string;
+            width: number;
+            height: number;
+            originalName: string;
+        }[] = [];
+
         try {
-            const uploads = await Promise.all(
+            // -------------------------
+            // 2. Upload images
+            // -------------------------
+            uploads = await Promise.all(
                 files.map((file) =>
                     postUtils.uploadBuffer(file.buffer, file.originalname),
                 ),
             );
-
+            // -------------------------
+            // 3. Create post
+            // -------------------------
             const post = await this.postService.createPost(
                 title,
                 content,
@@ -43,8 +66,45 @@ class PostController {
                 status: 'success',
                 data: post,
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
+
+            // -------------------------
+            // 4. Cleanup uploaded images
+            // -------------------------
+            if (uploads.length > 0) {
+                const publicIds = uploads.map((u) => u.publicId);
+
+                await postUtils
+                    .deleteImages(publicIds)
+                    .catch((cleanupError) => {
+                        console.error(
+                            'CRITICAL: Failed to clean up orphaned images',
+                            cleanupError,
+                        );
+                    });
+            }
+
+            // -------------------------
+            // 5. Proper error response
+            // -------------------------
+            if (error instanceof Error) {
+                // Sniff for our custom validation errors thrown from the service layer
+                const isValidationError =
+                    error.message.includes('must be') ||
+                    error.message.includes('Max') ||
+                    error.message.includes('Invalid') ||
+                    error.message.includes('too long') ||
+                    error.message.includes('too short') ||
+                    error.message.includes('No valid tags');
+
+                if (isValidationError) {
+                    return res.status(400).json({
+                        status: 'fail',
+                        message: error.message,
+                    });
+                }
+            }
 
             return res.status(500).json({
                 status: 'error',

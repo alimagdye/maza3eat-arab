@@ -18,6 +18,7 @@ const postValidation: {
             .isLength({ min: 1, max: 5000 })
             .withMessage('Content is required'),
         body('tags')
+            .toArray()
             .isArray({ min: 1, max: 10 })
             .withMessage('Tags must be min 1 and max 10'),
         body('tags.*')
