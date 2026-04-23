@@ -11,6 +11,125 @@ class PostService {
 
     private readonly HOME_POSTS_TTL = 1000 * 60 * 60; // 1 Hour
 
+    // async createPost(
+    //     title: string,
+    //     content: string,
+    //     tags: string[],
+    //     userId: string,
+    //     uploads: {
+    //         url: string;
+    //         publicId: string;
+    //         width: number;
+    //         height: number;
+    //         originalName: string;
+    //     }[],
+    // ) {
+    //     if (!uploads || uploads.length < 1) {
+    //         throw new Error('Post must have at least 1 image');
+    //     }
+
+    //     if (uploads.length > 6) {
+    //         throw new Error('Max 6 images');
+    //     }
+
+    //     if (!tags || tags.length < 1) {
+    //         throw new Error('Post must have at least 1 tag');
+    //     }
+
+    //     if (tags.length > 10) {
+    //         throw new Error('Max 10 tags');
+    //     }
+
+    //     return prisma.$transaction(async (tx) => {
+    //         const newPost = await tx.post.create({
+    //             data: {
+    //                 title,
+    //                 titleNormalized: normalizeArabic(title),
+    //                 content,
+    //                 authorId: userId,
+    //             },
+    //         });
+
+    //         await tx.postImage.createMany({
+    //             data: uploads.map((image) => ({
+    //                 postId: newPost.id,
+    //                 imageUrl: image.url,
+    //                 publicId: image.publicId,
+    //                 originalName: image.originalName,
+    //                 width: image.width,
+    //                 height: image.height,
+    //             })),
+    //         });
+
+    //         const uniqueOriginalTags = [
+    //             ...new Set(tags.map((tag) => tag.trim()).filter(Boolean)),
+    //         ];
+
+    //         const normalizedList = uniqueOriginalTags.map((tag) =>
+    //             normalizeArabic(tag),
+    //         );
+
+    //         const existing = await tx.tag.findMany({
+    //             where: {
+    //                 normalizedName: {
+    //                     in: normalizedList,
+    //                 },
+    //             },
+    //             select: {
+    //                 id: true,
+    //                 normalizedName: true,
+    //             },
+    //         });
+
+    //         const tagIdByNormalized = new Map(
+    //             existing.map((tag) => [tag.normalizedName, tag.id]),
+    //         );
+
+    //         const missing = normalizedList
+    //             .filter((n) => !tagIdByNormalized.has(n))
+    //             .map((n) => ({
+    //                 normalizedName: n,
+    //             }));
+
+    //         if (missing.length > 0) {
+    //             await tx.tag.createMany({
+    //                 data: missing,
+    //                 skipDuplicates: true,
+    //             });
+
+    //             const created = await tx.tag.findMany({
+    //                 where: {
+    //                     normalizedName: {
+    //                         in: missing.map((m) => m.normalizedName),
+    //                     },
+    //                 },
+    //                 select: {
+    //                     id: true,
+    //                     normalizedName: true,
+    //                 },
+    //             });
+
+    //             for (const tag of created) {
+    //                 tagIdByNormalized.set(tag.normalizedName, tag.id);
+    //             }
+    //         }
+
+    //         await tx.postTag.createMany({
+    //             data: uniqueOriginalTags.map((original) => {
+    //                 const normalized = normalizeArabic(original);
+
+    //                 return {
+    //                     postId: newPost.id,
+    //                     tagId: tagIdByNormalized.get(normalized)!,
+    //                     name: original,
+    //                 };
+    //             }),
+    //         });
+
+    //         return newPost;
+    //     });
+    // }
+
     async createPost(
         title: string,
         content: string,
@@ -24,7 +143,24 @@ class PostService {
             originalName: string;
         }[],
     ) {
-        if (!uploads || uploads.length < 1) {
+        // -------------------------
+        // 1. normalize base inputs
+        // -------------------------
+        const trimmedTitle = title?.trim();
+        const trimmedContent = content?.trim();
+
+        // -------------------------
+        // 2. validation
+        // -------------------------
+        if (!trimmedTitle || trimmedTitle.length < 10) {
+            throw new Error('Title must be at least 10 characters');
+        }
+
+        if (!trimmedContent || trimmedContent.length < 20) {
+            throw new Error('Content must be at least 20 characters');
+        }
+
+        if (!uploads || uploads.length === 0) {
             throw new Error('Post must have at least 1 image');
         }
 
@@ -32,7 +168,7 @@ class PostService {
             throw new Error('Max 6 images');
         }
 
-        if (!tags || tags.length < 1) {
+        if (!tags || tags.length === 0) {
             throw new Error('Post must have at least 1 tag');
         }
 
@@ -40,93 +176,111 @@ class PostService {
             throw new Error('Max 10 tags');
         }
 
-        return prisma.$transaction(async (tx) => {
-            const newPost = await tx.post.create({
+        // optional: validate uploads structure (defensive)
+        for (const img of uploads) {
+            if (!img.url || !img.publicId) {
+                throw new Error('Invalid image data');
+            }
+        }
+
+        // -------------------------
+        // 3. normalize + dedupe tags
+        // -------------------------
+        const tagMap = new Map<string, string>();
+
+        for (const tag of tags) {
+            if (typeof tag !== 'string') {
+                throw new Error('Invalid tag');
+            }
+
+            const trimmed = tag.trim();
+            if (!trimmed) continue;
+
+            if (trimmed.length > 30) {
+                throw new Error('Tag too long (max 30)');
+            }
+
+            const normalized = normalizeArabic(trimmed).toLowerCase();
+
+            // dedupe AFTER normalization
+            if (!tagMap.has(normalized)) {
+                tagMap.set(normalized, trimmed);
+            }
+        }
+
+        const normalizedTags = Array.from(tagMap.keys());
+
+        if (normalizedTags.length === 0) {
+            throw new Error('No valid tags');
+        }
+
+        const titleNormalized = normalizeArabic(trimmedTitle);
+
+        // -------------------------
+        // 4. transaction
+        // -------------------------
+        return await prisma.$transaction(async (tx) => {
+            // ensure global tags exist
+            await tx.tag.createMany({
+                data: normalizedTags.map((n) => ({ normalizedName: n })),
+                skipDuplicates: true,
+            });
+
+            // fetch tag IDs (authoritative state)
+            const tagRecords = await tx.tag.findMany({
+                where: { normalizedName: { in: normalizedTags } },
+                select: { id: true, normalizedName: true },
+            });
+
+            const tagIdMap = new Map(
+                tagRecords.map((t) => [t.normalizedName, t.id]),
+            );
+
+            // create post
+            const post = await tx.post.create({
                 data: {
-                    title,
-                    titleNormalized: normalizeArabic(title),
-                    content,
+                    title: trimmedTitle,
+                    titleNormalized,
+                    content: trimmedContent,
                     authorId: userId,
                 },
             });
 
+            // insert images (bulk)
             await tx.postImage.createMany({
-                data: uploads.map((image) => ({
-                    postId: newPost.id,
-                    imageUrl: image.url,
-                    publicId: image.publicId,
-                    originalName: image.originalName,
-                    width: image.width,
-                    height: image.height,
+                data: uploads.map((img) => ({
+                    postId: post.id,
+                    imageUrl: img.url,
+                    publicId: img.publicId,
+                    originalName: img.originalName,
+                    width: img.width,
+                    height: img.height,
                 })),
             });
 
-            const uniqueOriginalTags = [
-                ...new Set(tags.map((tag) => tag.trim()).filter(Boolean)),
-            ];
+            // build relations safely
+            const relations = normalizedTags.map((n) => {
+                const tagId = tagIdMap.get(n);
 
-            const normalizedList = uniqueOriginalTags.map((tag) =>
-                normalizeArabic(tag),
-            );
-
-            const existing = await tx.tag.findMany({
-                where: {
-                    normalizedName: {
-                        in: normalizedList,
-                    },
-                },
-                select: {
-                    id: true,
-                    normalizedName: true,
-                },
-            });
-
-            const tagIdByNormalized = new Map(
-                existing.map((tag) => [tag.normalizedName, tag.id]),
-            );
-
-            const missing = normalizedList
-                .filter((n) => !tagIdByNormalized.has(n))
-                .map((n) => ({
-                    normalizedName: n,
-                }));
-
-            if (missing.length > 0) {
-                await tx.tag.createMany({
-                    data: missing,
-                    skipDuplicates: true,
-                });
-
-                const created = await tx.tag.findMany({
-                    where: {
-                        normalizedName: {
-                            in: missing.map((m) => m.normalizedName),
-                        },
-                    },
-                    select: {
-                        id: true,
-                        normalizedName: true,
-                    },
-                });
-
-                for (const tag of created) {
-                    tagIdByNormalized.set(tag.normalizedName, tag.id);
+                if (tagId === undefined) {
+                    throw new Error(
+                        `Invariant failed: missing tagId for "${n}"`,
+                    );
                 }
-            }
 
-            await tx.postTag.createMany({
-                data: uniqueOriginalTags.map((original) => {
-                    const normalized = normalizeArabic(original);
-
-                    return {
-                        postId: newPost.id,
-                        tagId: tagIdByNormalized.get(normalized)!,
-                        name: original,
-                    };
-                }),
+                return {
+                    postId: post.id,
+                    tagId,
+                    name: tagMap.get(n)!,
+                };
             });
 
-            return newPost;
+            // bulk insert post tags
+            await tx.postTag.createMany({
+                data: relations,
+            });
+
+            return post;
         });
     }
 

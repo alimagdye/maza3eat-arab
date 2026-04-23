@@ -577,6 +577,21 @@ model ContactRequest {
   @@index([requesterId])
 }
 
+//model ContactRequest {
+  //id String @id @default(uuid())
+
+  //senderId     String
+  //recipientId  String
+
+  //status       ContactRequestStatus
+  //contactMethod String? // set only when accepted
+
+  //createdAt DateTime @default(now())
+  //updatedAt DateTime @updatedAt
+
+  //@@unique([senderId, recipientId])
+//}
+
 //////////////////////////////////////////////////////
 // NOTIFICATIONS
 //////////////////////////////////////////////////////
