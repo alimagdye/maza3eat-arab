@@ -18,6 +18,14 @@ router.get(
 );
 
 router.get(
+    '/unread-count',
+    notificationRateLimiter.preAuthLimiter,
+    requireAuth,
+    notificationRateLimiter.notificationLimiter,
+    notificationController.getUnreadNotificationCount,
+);
+
+router.get(
     '/:id',
     notificationRateLimiter.preAuthLimiter,
     requireAuth,
