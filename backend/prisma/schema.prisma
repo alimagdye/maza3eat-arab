@@ -68,6 +68,13 @@ enum AdPosition {
   BOTTOM
 }
 
+enum ContactMethodType {
+  EMAIL
+  WHATSAPP
+  FACEBOOK
+  INSTAGRAM
+}
+
 //////////////////////////////////////////////////////
 // MODELS
 //////////////////////////////////////////////////////
@@ -538,11 +545,13 @@ model Report {
   answerId   String?
   replyId    String?
   answerReplyId String?
+  contactRequestId String?
 
   comment  Comment?  @relation(fields: [commentId], references: [id])
   answer   Answer?   @relation(fields: [answerId], references: [id])
   reply    Reply?    @relation(fields: [replyId], references: [id])
   answerReply AnswerReply? @relation(fields: [answerReplyId], references: [id])
+  contactRequest ContactRequest? @relation(fields: [contactRequestId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -564,33 +573,29 @@ model ContactRequest {
   receiver   User   @relation("ReceivedRequests", fields: [receiverId], references: [id])
 
   status ContactRequestStatus @default(PENDING)
+  reason String
 
-  sharedEmail     String?
-  sharedPhone     String?
-  sharedFacebook  String?
-  sharedInstagram String?
+  contactMethod ContactMethod?
 
+  reports Report[]
+
+  lastActivityAt DateTime @default(now())
   createdAt   DateTime  @default(now())
-  respondedAt DateTime?
 
-  @@index([receiverId])
-  @@index([requesterId])
+  @@unique([requesterId, receiverId])
 }
 
-//model ContactRequest {
-  //id String @id @default(uuid())
+model ContactMethod {
+  id String @id @default(uuid())
 
-  //senderId     String
-  //recipientId  String
+  contactRequestId String @unique
+  contactRequest ContactRequest @relation(fields: [contactRequestId], references: [id], onDelete: Cascade)
 
-  //status       ContactRequestStatus
-  //contactMethod String? // set only when accepted
+  type ContactMethodType
+  value String
 
-  //createdAt DateTime @default(now())
-  //updatedAt DateTime @updatedAt
-
-  //@@unique([senderId, recipientId])
-//}
+  createdAt DateTime @default(now())
+}
 
 //////////////////////////////////////////////////////
 // NOTIFICATIONS

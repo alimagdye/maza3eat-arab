@@ -1,8 +1,45 @@
-import { Request, Response } from 'express';
+import { Request, Response, CookieOptions } from 'express';
 import AuthService from './auth.service.js';
 
 class AuthController {
     private authService = AuthService;
+
+    // Define class properties
+    private readonly isProduction: boolean;
+    private readonly accessTokenMaxAge: number;
+    private readonly refreshTokenMaxAge: number;
+    private readonly baseCookieOptions: CookieOptions;
+
+    constructor() {
+        this.isProduction = process.env.NODE_ENV === 'production';
+
+        const accessStr = process.env.ACCESS_TOKEN_MAX_AGE;
+        const refreshStr = process.env.REFRESH_TOKEN_MAX_AGE;
+
+        // Fail fast if missing or invalid
+        if (!accessStr || isNaN(Number(accessStr))) {
+            throw new Error(
+                'FATAL: ACCESS_TOKEN_MAX_AGE must be a valid number in env.',
+            );
+        }
+        if (!refreshStr || isNaN(Number(refreshStr))) {
+            throw new Error(
+                'FATAL: REFRESH_TOKEN_MAX_AGE must be a valid number in env.',
+            );
+        }
+
+        // Pre-calculate max ages in milliseconds
+        this.accessTokenMaxAge = Number(accessStr) * 1000;
+        this.refreshTokenMaxAge = Number(refreshStr) * 1000;
+
+        // Define base cookie options once
+        this.baseCookieOptions = {
+            httpOnly: true,
+            secure: this.isProduction,
+            sameSite: this.isProduction ? 'none' : 'lax',
+            path: '/',
+        };
+    }
 
     logout = async (req: Request, res: Response) => {
         const refreshToken = req.cookies?.refreshToken;
@@ -15,18 +52,11 @@ class AuthController {
             console.error('Logout error:', error);
         }
 
-        const cookieOptions = {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        } as const;
+        // Reuse the base options
+        res.clearCookie('accessToken', this.baseCookieOptions);
+        res.clearCookie('refreshToken', this.baseCookieOptions);
 
-        res.clearCookie('accessToken', cookieOptions);
-        res.clearCookie('refreshToken', cookieOptions);
-
-        return res.status(200).json({
-            status: 'success',
-        });
+        return res.status(200).json({ status: 'success' });
     };
 
     refresh = async (req: Request, res: Response) => {
@@ -43,25 +73,18 @@ class AuthController {
             const tokens =
                 await this.authService.rotateRefreshToken(refreshToken);
 
+            // Spread the base options and add the specific maxAge
             res.cookie('accessToken', tokens.data.accessToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite:
-                    process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-                maxAge: Number(process.env.ACCESS_TOKEN_MAX_AGE) * 1000,
+                ...this.baseCookieOptions,
+                maxAge: this.accessTokenMaxAge,
             });
 
             res.cookie('refreshToken', tokens.data.refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite:
-                    process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-                maxAge: Number(process.env.REFRESH_TOKEN_MAX_AGE) * 1000,
+                ...this.baseCookieOptions,
+                maxAge: this.refreshTokenMaxAge,
             });
 
-            return res.status(200).json({
-                status: 'success',
-            });
+            return res.status(200).json({ status: 'success' });
         } catch (error: any) {
             console.error('Refresh error:', error);
 

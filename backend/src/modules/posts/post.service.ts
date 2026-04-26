@@ -1,134 +1,16 @@
 import { prisma } from '../../lib/client.js';
 import { normalizeArabic } from '../../utils/normalizeArabic.js';
-import postUtils from './post.utils.js';
+import PostUtils from './post.utils.js';
 import { HomeScope, HomeScopeType, ScopeCacheState } from '../../types/post.js';
 
 class PostService {
+    private postUtils = PostUtils;
     private homePostsCache: Record<HomeScopeType, ScopeCacheState> = {
         community: { data: [], expiresAt: 0, refreshPromise: null },
         admin: { data: [], expiresAt: 0, refreshPromise: null },
     };
 
     private readonly HOME_POSTS_TTL = 1000 * 60 * 60; // 1 Hour
-
-    // async createPost(
-    //     title: string,
-    //     content: string,
-    //     tags: string[],
-    //     userId: string,
-    //     uploads: {
-    //         url: string;
-    //         publicId: string;
-    //         width: number;
-    //         height: number;
-    //         originalName: string;
-    //     }[],
-    // ) {
-    //     if (!uploads || uploads.length < 1) {
-    //         throw new Error('Post must have at least 1 image');
-    //     }
-
-    //     if (uploads.length > 6) {
-    //         throw new Error('Max 6 images');
-    //     }
-
-    //     if (!tags || tags.length < 1) {
-    //         throw new Error('Post must have at least 1 tag');
-    //     }
-
-    //     if (tags.length > 10) {
-    //         throw new Error('Max 10 tags');
-    //     }
-
-    //     return prisma.$transaction(async (tx) => {
-    //         const newPost = await tx.post.create({
-    //             data: {
-    //                 title,
-    //                 titleNormalized: normalizeArabic(title),
-    //                 content,
-    //                 authorId: userId,
-    //             },
-    //         });
-
-    //         await tx.postImage.createMany({
-    //             data: uploads.map((image) => ({
-    //                 postId: newPost.id,
-    //                 imageUrl: image.url,
-    //                 publicId: image.publicId,
-    //                 originalName: image.originalName,
-    //                 width: image.width,
-    //                 height: image.height,
-    //             })),
-    //         });
-
-    //         const uniqueOriginalTags = [
-    //             ...new Set(tags.map((tag) => tag.trim()).filter(Boolean)),
-    //         ];
-
-    //         const normalizedList = uniqueOriginalTags.map((tag) =>
-    //             normalizeArabic(tag),
-    //         );
-
-    //         const existing = await tx.tag.findMany({
-    //             where: {
-    //                 normalizedName: {
-    //                     in: normalizedList,
-    //                 },
-    //             },
-    //             select: {
-    //                 id: true,
-    //                 normalizedName: true,
-    //             },
-    //         });
-
-    //         const tagIdByNormalized = new Map(
-    //             existing.map((tag) => [tag.normalizedName, tag.id]),
-    //         );
-
-    //         const missing = normalizedList
-    //             .filter((n) => !tagIdByNormalized.has(n))
-    //             .map((n) => ({
-    //                 normalizedName: n,
-    //             }));
-
-    //         if (missing.length > 0) {
-    //             await tx.tag.createMany({
-    //                 data: missing,
-    //                 skipDuplicates: true,
-    //             });
-
-    //             const created = await tx.tag.findMany({
-    //                 where: {
-    //                     normalizedName: {
-    //                         in: missing.map((m) => m.normalizedName),
-    //                     },
-    //                 },
-    //                 select: {
-    //                     id: true,
-    //                     normalizedName: true,
-    //                 },
-    //             });
-
-    //             for (const tag of created) {
-    //                 tagIdByNormalized.set(tag.normalizedName, tag.id);
-    //             }
-    //         }
-
-    //         await tx.postTag.createMany({
-    //             data: uniqueOriginalTags.map((original) => {
-    //                 const normalized = normalizeArabic(original);
-
-    //                 return {
-    //                     postId: newPost.id,
-    //                     tagId: tagIdByNormalized.get(normalized)!,
-    //                     name: original,
-    //                 };
-    //             }),
-    //         });
-
-    //         return newPost;
-    //     });
-    // }
 
     async createPost(
         title: string,
@@ -522,7 +404,7 @@ class PostService {
         const tagIds = post.tags.map((tag) => tag.tagId);
 
         if (publicIds.length > 0) {
-            await postUtils.deleteImages(publicIds);
+            await this.postUtils.deleteImages(publicIds);
         }
 
         await prisma.$transaction(async (tx) => {

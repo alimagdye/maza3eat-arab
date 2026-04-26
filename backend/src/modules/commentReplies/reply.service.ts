@@ -298,9 +298,7 @@ class ReplyService {
 
         const comment = await prisma.comment.findUnique({
             where: { id: commentId },
-            select: {
-                id: true,
-            },
+            select: { id: true },
         });
 
         if (!comment) {
@@ -316,7 +314,7 @@ class ReplyService {
                 }),
             },
 
-            take: pageSize,
+            take: pageSize + 1,
 
             ...(cursor && {
                 skip: 1,
@@ -333,6 +331,7 @@ class ReplyService {
                         avatar: true,
                         tier: {
                             select: {
+                                id: true,
                                 name: true,
                                 badgeColor: true,
                             },
@@ -342,9 +341,7 @@ class ReplyService {
 
                 replies: {
                     take: 1,
-                    select: {
-                        id: true,
-                    },
+                    select: { id: true },
                 },
 
                 ...(userId && {
@@ -356,13 +353,17 @@ class ReplyService {
             },
         });
 
-        const result = replies.map((reply) => {
+        const hasMore = replies.length > pageSize;
+
+        const sliced = hasMore ? replies.slice(0, pageSize) : replies;
+
+        const result = sliced.map((reply) => {
             const likedByMe =
                 userId && reply.likes ? reply.likes.length > 0 : false;
+
             return {
                 id: reply.id,
                 commentId: reply.commentId,
-                authorId: reply.authorId,
                 content: reply.content,
                 likesCount: reply.likesCount,
                 depth: reply.depth,
@@ -379,13 +380,12 @@ class ReplyService {
             };
         });
 
-        const nextCursor =
-            replies.length === pageSize ? replies[replies.length - 1].id : null;
+        const nextCursor = hasMore ? sliced[sliced.length - 1].id : null;
 
         return {
             replies: result,
             nextCursor,
-            hasMore: replies.length === pageSize,
+            hasMore,
         };
     }
 
@@ -415,7 +415,7 @@ class ReplyService {
                 }),
             },
 
-            take: pageSize,
+            take: pageSize + 1,
 
             ...(cursor && {
                 skip: 1,
@@ -432,6 +432,7 @@ class ReplyService {
                         avatar: true,
                         tier: {
                             select: {
+                                id: true,
                                 name: true,
                                 badgeColor: true,
                             },
@@ -455,10 +456,11 @@ class ReplyService {
             },
         });
 
-        const nextCursor =
-            replies.length === pageSize ? replies[replies.length - 1].id : null;
+        const hasMore = replies.length > pageSize;
 
-        const result = replies.map((reply) => {
+        const sliced = hasMore ? replies.slice(0, pageSize) : replies;
+
+        const result = sliced.map((reply) => {
             const likedByMe =
                 userId && reply.likes ? reply.likes.length > 0 : false;
 
@@ -482,10 +484,12 @@ class ReplyService {
             };
         });
 
+        const nextCursor = hasMore ? sliced[sliced.length - 1].id : null;
+
         return {
             replies: result,
             nextCursor,
-            hasMore: replies.length === pageSize,
+            hasMore,
         };
     }
 }
