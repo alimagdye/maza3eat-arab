@@ -17,10 +17,7 @@ class PostUtils {
         return `${Date.now()}-${random}-${this.safeName(filename)}`;
     }
 
-    // Inside your postUtils class...
     async uploadBuffer(buffer: Buffer, filename: string) {
-        // 1. FAST PRE-PROCESSING: Shrink the physical dimensions and convert to WebP
-        // A 4K image might drop from 6MB to 400KB here, taking milliseconds.
         const optimizedBuffer = await sharp(buffer)
             .resize({
                 width: 2048,
@@ -42,13 +39,10 @@ class PostUtils {
                 {
                     folder: 'posts',
                     public_id: this.generateId(filename),
-                    // 2. CLOUDINARY FINAL POLISH
                     transformation: [
                         {
-                            // Let Cloudinary serve the best format for the user's browser
                             quality: 'auto:best',
                             fetch_format: 'auto',
-                            // You no longer need to crop/resize here because sharp already did it!
                         },
                     ],
                 },
@@ -65,7 +59,6 @@ class PostUtils {
                 },
             );
 
-            // 3. Upload the tiny, optimized buffer instead of the massive original one
             stream.end(optimizedBuffer);
         });
     }

@@ -77,8 +77,8 @@ import answerLikeRoutes from './modules/questionLikes/questionLike.routes.js';
 import adRoutes from './modules/ads/ad.routes.js';
 import userRoutes from './modules/users/user.routes.js';
 import notificationRoutes from './modules/notifications/notification.routes.js';
+import contactRequestRoutes from "./modules/contactRequests/contact.routes.js";
 // import reportRoutes from "./modules/reports/routes";
-// import contactRoutes from "./modules/contact/routes";
 // import adminRoutes from "./modules/admin/routes";
 
 app.use('/api/v1/auth', authRoutes);
@@ -92,8 +92,8 @@ app.use('/api/v1', answerLikeRoutes);
 app.use('/api/v1/ads', adRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use("/api/v1/contact-requests", contactRequestRoutes);
 // app.use("/api/v1/reports", reportRoutes);
-// app.use("/api/v1/contact-requests", contactRoutes);
 // app.use("/api/v1/admin", adminRoutes);
 
 // -----------------------------

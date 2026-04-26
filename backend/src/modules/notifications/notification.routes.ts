@@ -3,6 +3,7 @@ import { requireAuth } from '../../middlewares/requireAuth.js';
 import notificationController from './notification.controller.js';
 import notificationValidation from './notification.validation.js';
 import notificationRateLimiter from './notification.rateLimiter.js';
+import validate from '../../middlewares/validateRequest.js';
 
 const router = Router();
 
@@ -12,15 +13,18 @@ router.get(
     requireAuth,
     notificationRateLimiter.notificationLimiter,
     notificationValidation.validateGetNotifications,
+    validate,
     notificationController.getNotifications,
 );
 
-router.get('/:id', 
+router.get(
+    '/:id',
     notificationRateLimiter.preAuthLimiter,
     requireAuth,
     notificationRateLimiter.notificationLimiter,
     notificationValidation.validateGetNotification,
-    notificationController.getNotificationById
+    validate,
+    notificationController.getNotificationById,
 );
 
 export default router;
