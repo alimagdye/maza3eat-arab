@@ -46,6 +46,25 @@ class NotificationController {
             });
         }
     };
+
+    getUnreadNotificationCount = async (req: Request, res: Response) => {
+        const userId = req.user.sub as string;
+        try {
+            const count =
+                await this.notificationService.getUnreadNotificationCount(
+                    userId,
+                );
+            res.status(200).json({
+                status: 'success',
+                data: { unreadCount: count },
+            });
+        } catch (error) {
+            res.status(500).json({
+                status: 'error',
+                message: 'Failed to fetch unread notification count',
+            });
+        }
+    };
 }
 
 export default new NotificationController();

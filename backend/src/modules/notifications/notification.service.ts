@@ -367,515 +367,621 @@ class NotificationService {
     }
 
     async getAnswerReplyNotification(notificationId: string) {
-        const notification = await prisma.notification.findUnique({
-            where: {
-                id: notificationId,
-            },
-            select: {
-                id: true,
-                type: true,
-                isRead: true,
-                createdAt: true,
-                answerReply: {
-                    select: {
-                        questionId: true,
-                        answer: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
+        return await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: {
+                    id: notificationId,
+                },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+
+                    answerReply: {
+                        select: {
+                            questionId: true,
+
+                            answer: {
+                                select: {
+                                    id: true,
+                                    content: true,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
                                             },
                                         },
                                     },
+                                    totalVoteValue: true,
+                                    repliesCount: true,
                                 },
-                                totalVoteValue: true,
-                                repliesCount: true,
                             },
-                        },
-                        reply: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
+
+                            reply: {
+                                select: {
+                                    id: true,
+                                    content: true,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
                                             },
                                         },
                                     },
+                                    likesCount: true,
+                                    depth: true,
+                                    path: true,
                                 },
-                                likesCount: true,
-                                depth: true,
-                                path: true,
                             },
                         },
                     },
                 },
-            },
-        });
-        if (notification?.answerReply) {
+            });
+
+            if (!notification?.answerReply) {
+                return null;
+            }
+
+            // mark as read only once
+            if (!notification.isRead) {
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
+                    data: {
+                        isRead: true,
+                    },
+                });
+            }
+
             return {
                 notification: {
                     id: notification.id,
                     type: notification.type,
-                    isRead: notification.isRead,
+                    isRead: true,
                     createdAt: notification.createdAt,
                     questionId: notification.answerReply.questionId,
                     answer: notification.answerReply.answer,
                     reply: notification.answerReply.reply,
                 },
             };
-        } else {
-            return null;
-        }
+        });
     }
 
     async getCommentReplyNotification(notificationId: string) {
-        const notification = await prisma.notification.findUnique({
-            where: {
-                id: notificationId,
-            },
-            select: {
-                id: true,
-                type: true,
-                isRead: true,
-                createdAt: true,
-                commentReply: {
-                    select: {
-                        postId: true,
-                        comment: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
+        return await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: {
+                    id: notificationId,
+                },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+                    commentReply: {
+                        select: {
+                            postId: true,
+                            comment: {
+                                select: {
+                                    id: true,
+                                    content: true,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
                                             },
                                         },
                                     },
+                                    likesCount: true,
+                                    repliesCount: true,
                                 },
-                                likesCount: true,
-                                repliesCount: true,
                             },
-                        },
-                        reply: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
+                            reply: {
+                                select: {
+                                    id: true,
+                                    content: true,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
                                             },
                                         },
                                     },
+                                    likesCount: true,
+                                    depth: true,
+                                    path: true,
                                 },
-                                likesCount: true,
-                                depth: true,
-                                path: true,
                             },
                         },
                     },
                 },
-            },
-        });
-        if (notification?.commentReply) {
+            });
+            if (!notification?.commentReply) {
+                return null;
+            }
+            if (!notification.isRead) {
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
+                    data: {
+                        isRead: true,
+                    },
+                });
+            }
             return {
                 notification: {
                     id: notification.id,
                     type: notification.type,
-                    isRead: notification.isRead,
+                    isRead: true,
                     createdAt: notification.createdAt,
                     postId: notification.commentReply.postId,
                     comment: notification.commentReply.comment,
                     reply: notification.commentReply.reply,
                 },
             };
-        } else {
-            return null;
-        }
+        });
     }
 
     async getAnswerReplyReplyNotification(notificationId: string) {
-        const notification = await prisma.notification.findUnique({
-            where: {
-                id: notificationId,
-            },
-            select: {
-                id: true,
-                type: true,
-                isRead: true,
-                createdAt: true,
-                answerReplyReply: {
-                    select: {
-                        questionId: true,
-                        parentReply: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
+        return await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: {
+                    id: notificationId,
+                },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+                    answerReplyReply: {
+                        select: {
+                            questionId: true,
+                            parentReply: {
+                                select: {
+                                    id: true,
+                                    content: true,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
                                             },
                                         },
                                     },
+                                    likesCount: true,
+                                    depth: true,
+                                    path: true,
                                 },
-                                likesCount: true,
-                                depth: true,
-                                path: true,
                             },
-                        },
-                        reply: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
+                            reply: {
+                                select: {
+                                    id: true,
+                                    content: true,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
                                             },
                                         },
                                     },
+                                    likesCount: true,
+                                    depth: true,
+                                    path: true,
                                 },
-                                likesCount: true,
-                                depth: true,
-                                path: true,
                             },
                         },
                     },
                 },
-            },
-        });
-        if (notification?.answerReplyReply) {
+            });
+            if (!notification?.answerReplyReply) {
+                return null;
+            }
+            if (!notification.isRead) {
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
+                    data: {
+                        isRead: true,
+                    },
+                });
+            }
             return {
                 notification: {
                     id: notification.id,
                     type: notification.type,
-                    isRead: notification.isRead,
+                    isRead: true,
                     createdAt: notification.createdAt,
                     questionId: notification.answerReplyReply.questionId,
                     parentReply: notification.answerReplyReply.parentReply,
                     reply: notification.answerReplyReply.reply,
                 },
             };
-        } else {
-            return null;
-        }
+        });
     }
 
     async getCommentReplyReplyNotification(notificationId: string) {
-        const notification = await prisma.notification.findUnique({
-            where: {
-                id: notificationId,
-            },
-            select: {
-                id: true,
-                type: true,
-                isRead: true,
-                createdAt: true,
-                commentReplyReply: {
-                    select: {
-                        postId: true,
-                        parentReply: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
+        return await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: {
+                    id: notificationId,
+                },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+                    commentReplyReply: {
+                        select: {
+                            postId: true,
+                            parentReply: {
+                                select: {
+                                    id: true,
+                                    content: true,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
                                             },
                                         },
                                     },
+                                    likesCount: true,
+                                    depth: true,
+                                    path: true,
                                 },
-                                likesCount: true,
-                                depth: true,
-                                path: true,
                             },
-                        },
-                        reply: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
+                            reply: {
+                                select: {
+                                    id: true,
+                                    content: true,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
                                             },
                                         },
                                     },
+                                    likesCount: true,
+                                    depth: true,
+                                    path: true,
                                 },
-                                likesCount: true,
-                                depth: true,
-                                path: true,
                             },
                         },
                     },
                 },
-            },
-        });
-        if (notification?.commentReplyReply) {
+            });
+            if (!notification?.commentReplyReply) {
+                return null;
+            }
+            if (!notification.isRead) {
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
+                    data: {
+                        isRead: true,
+                    },
+                });
+            }
             return {
                 notification: {
                     id: notification.id,
                     type: notification.type,
-                    isRead: notification.isRead,
+                    isRead: true,
                     createdAt: notification.createdAt,
                     postId: notification.commentReplyReply.postId,
                     parentReply: notification.commentReplyReply.parentReply,
                     reply: notification.commentReplyReply.reply,
                 },
             };
-        } else {
-            return null;
-        }
+        });
     }
 
     async getCommentNotification(notificationId: string) {
-        const notification = await prisma.notification.findUnique({
-            where: { id: notificationId },
-            select: {
-                id: true,
-                type: true,
-                isRead: true,
-                createdAt: true,
-                lastActivityAt: true,
-                postComment: {
-                    select: {
-                        postId: true,
-                        lastCommentId: true,
+        return await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: { id: notificationId },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+                    lastActivityAt: true,
+                    postComment: {
+                        select: {
+                            postId: true,
+                            lastCommentId: true,
+                        },
                     },
                 },
-            },
-        });
-
-        if (!notification || !notification.postComment) {
-            return null;
-        }
-
-        let { lastCommentId, postId } = notification.postComment;
-
-        // Fix if lastComment was deleted
-        if (!lastCommentId) {
-            const fallback = await prisma.comment.findFirst({
-                where: {
-                    postId,
-                    createdAt: {
-                        gte: notification.createdAt,
-                        lte: notification.lastActivityAt,
-                    },
-                },
-                orderBy: { createdAt: 'desc' },
-                select: { id: true },
             });
 
-            if (!fallback) {
+            if (!notification || !notification.postComment) {
                 return null;
             }
 
-            // persist fix
-            await prisma.postCommentNotification.update({
-                where: { notificationId },
-                data: {
-                    lastCommentId: fallback.id,
-                },
-            });
+            let { lastCommentId, postId } = notification.postComment;
 
-            lastCommentId = fallback.id;
-        }
-
-        return {
-            notification: {
-                id: notification.id,
-                type: notification.type,
-                isRead: notification.isRead,
-                createdAt: notification.createdAt,
-                postId,
-                lastCommentId,
-            },
-        };
-    }
-
-    async getAnswerNotification(notificationId: string) {
-        const notification = await prisma.notification.findUnique({
-            where: { id: notificationId },
-            select: {
-                id: true,
-                type: true,
-                isRead: true,
-                createdAt: true,
-                lastActivityAt: true,
-                questionAnswer: {
-                    select: {
-                        questionId: true,
-                        lastAnswerId: true,
+            // Fix if lastComment was deleted
+            if (!lastCommentId) {
+                const fallback = await tx.comment.findFirst({
+                    where: {
+                        postId,
+                        createdAt: {
+                            gte: notification.createdAt,
+                            lte: notification.lastActivityAt,
+                        },
                     },
-                },
-            },
-        });
+                    orderBy: { createdAt: 'desc' },
+                    select: { id: true },
+                });
 
-        if (!notification || !notification.questionAnswer) {
-            return null;
-        }
+                if (!fallback) {
+                    return null;
+                }
 
-        let { lastAnswerId, questionId } = notification.questionAnswer;
-
-        // Fix if lastAnswer was deleted
-        if (!lastAnswerId) {
-            const fallback = await prisma.answer.findFirst({
-                where: {
-                    questionId,
-                    createdAt: {
-                        gte: notification.createdAt,
-                        lte: notification.lastActivityAt,
+                // persist fix
+                await tx.postCommentNotification.update({
+                    where: { notificationId },
+                    data: {
+                        lastCommentId: fallback.id,
                     },
-                },
-                orderBy: { createdAt: 'desc' },
-                select: { id: true },
-            });
+                });
 
-            if (!fallback) {
-                return null;
+                lastCommentId = fallback.id;
+            }
+            if (!notification.isRead) {
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
+                    data: {
+                        isRead: true,
+                    },
+                });
             }
 
-            // persist fix
-            await prisma.questionAnswerNotification.update({
-                where: { notificationId },
-                data: {
-                    lastAnswerId: fallback.id,
-                },
-            });
-
-            lastAnswerId = fallback.id;
-        }
-
-        return {
-            notification: {
-                id: notification.id,
-                type: notification.type,
-                isRead: notification.isRead,
-                createdAt: notification.createdAt,
-                questionId,
-                lastAnswerId,
-            },
-        };
-    }
-
-    async getQuestionLikeNotification(notificationId: string) {
-        const notification = await prisma.notification.findUnique({
-            where: { id: notificationId },
-            select: {
-                id: true,
-                type: true,
-                isRead: true,
-                createdAt: true,
-                lastActivityAt: true,
-                questionLike: {
-                    select: {
-                        questionId: true,
-                    },
-                },
-            },
-        });
-
-        if (notification?.questionLike) {
             return {
                 notification: {
                     id: notification.id,
                     type: notification.type,
-                    isRead: notification.isRead,
+                    isRead: true,
+                    createdAt: notification.createdAt,
+                    postId,
+                    lastCommentId,
+                },
+            };
+        });
+    }
+
+    async getAnswerNotification(notificationId: string) {
+        return await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: { id: notificationId },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+                    lastActivityAt: true,
+                    questionAnswer: {
+                        select: {
+                            questionId: true,
+                            lastAnswerId: true,
+                        },
+                    },
+                },
+            });
+
+            if (!notification || !notification.questionAnswer) {
+                return null;
+            }
+
+            let { lastAnswerId, questionId } = notification.questionAnswer;
+
+            // Fix if lastAnswer was deleted
+            if (!lastAnswerId) {
+                const fallback = await tx.answer.findFirst({
+                    where: {
+                        questionId,
+                        createdAt: {
+                            gte: notification.createdAt,
+                            lte: notification.lastActivityAt,
+                        },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    select: { id: true },
+                });
+
+                if (!fallback) {
+                    return null;
+                }
+
+                // persist fix
+                await tx.questionAnswerNotification.update({
+                    where: { notificationId },
+                    data: {
+                        lastAnswerId: fallback.id,
+                    },
+                });
+
+                lastAnswerId = fallback.id;
+            }
+            if (!notification.isRead) {
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
+                    data: {
+                        isRead: true,
+                    },
+                });
+            }
+
+            return {
+                notification: {
+                    id: notification.id,
+                    type: notification.type,
+                    isRead: true,
+                    createdAt: notification.createdAt,
+                    questionId,
+                    lastAnswerId,
+                },
+            };
+        });
+    }
+
+    async getQuestionLikeNotification(notificationId: string) {
+        return await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: { id: notificationId },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+                    lastActivityAt: true,
+                    questionLike: {
+                        select: {
+                            questionId: true,
+                        },
+                    },
+                },
+            });
+            if (!notification?.questionLike) {
+                return null;
+            }
+            if (!notification.isRead) {
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
+                    data: {
+                        isRead: true,
+                    },
+                });
+            }
+
+            return {
+                notification: {
+                    id: notification.id,
+                    type: notification.type,
+                    isRead: true,
                     createdAt: notification.createdAt,
                     questionId: notification.questionLike.questionId,
                 },
             };
-        } else {
-            return null;
-        }
+        });
     }
 
     async getPostLikeNotification(notificationId: string) {
-        const notification = await prisma.notification.findUnique({
-            where: { id: notificationId },
-            select: {
-                id: true,
-                type: true,
-                isRead: true,
-                createdAt: true,
-                lastActivityAt: true,
-                postLike: {
-                    select: {
-                        postId: true,
+        return await prisma.$transaction(async (tx) => {
+            const notification = await prisma.notification.findUnique({
+                where: { id: notificationId },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+                    lastActivityAt: true,
+                    postLike: {
+                        select: {
+                            postId: true,
+                        },
                     },
                 },
-            },
-        });
+            });
+            if (!notification?.postLike) {
+                return null;
+            }
+            if (!notification.isRead) {
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
+                    data: {
+                        isRead: true,
+                    },
+                });
+            }
 
-        if (notification?.postLike) {
             return {
                 notification: {
                     id: notification.id,
                     type: notification.type,
-                    isRead: notification.isRead,
+                    isRead: true,
                     createdAt: notification.createdAt,
                     postId: notification.postLike.postId,
                 },
             };
-        } else {
-            return null;
-        }
+        });
+    }
+
+    async getUnreadNotificationCount(userId: string) {
+        return await prisma.notification.count({
+            where: {
+                recipientId: userId,
+                isRead: false,
+            },
+        });
     }
 }
 
