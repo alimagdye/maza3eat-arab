@@ -6,6 +6,8 @@ import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { prisma } from './lib/client.js';
+import { initSocket } from './sockets/socket.server.js';
+import { getIO } from './sockets/socket.server.js';
 // -----------------------------
 // Initialize
 // -----------------------------
@@ -130,6 +132,9 @@ async function startServer() {
         await prisma.$connect();
         console.log('✅ Database connected');
 
+        initSocket(server);
+        console.log('✅ WebSocket initialized');
+
         server.listen(PORT, () => {
             console.log(
                 `🚀 Server running on http://localhost:${PORT} (${NODE_ENV})`,
@@ -149,12 +154,18 @@ startServer();
 
 process.on('SIGINT', async () => {
     console.log('🛑 SIGINT received. Shutting down...');
+    try {
+        getIO().close();
+    } catch {}
     await prisma.$disconnect();
     process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
     console.log('🛑 SIGTERM received. Shutting down...');
+    try {
+        getIO().close();
+    } catch {}
     await prisma.$disconnect();
     process.exit(0);
 });

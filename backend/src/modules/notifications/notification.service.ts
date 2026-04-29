@@ -4,6 +4,7 @@ import {
     CreatePostOrQuestionLikeNotificationParams,
 } from '../../types/notification.js';
 import { prisma } from '../../lib/client.js';
+import socketService from '../../sockets/socket.service.js';
 class NotificationService {
     async createReplyNotification(params: CreateReplyNotificationParams) {
         const { recipientId, actorId, type, replyId } = params;
@@ -51,6 +52,10 @@ class NotificationService {
         }
 
         await prisma.notification.create({ data });
+        socketService.emitNotificationCount(
+            recipientId,
+            await this.getUnreadNotificationCount(recipientId),
+        );
     }
 
     async createCommentOrAnswerNotification(
@@ -68,6 +73,8 @@ class NotificationService {
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
         const now = new Date();
 
+        let shouldEmit = false;
+
         await prisma.$transaction(async (tx) => {
             // 1. find existing (INSIDE transaction)
             const existing = await tx.notification.findFirst({
@@ -79,7 +86,7 @@ class NotificationService {
                         gte: oneHourAgo,
                     },
                 },
-                select: { id: true },
+                select: { id: true, isRead: true },
             });
 
             // 2. update existing
@@ -93,6 +100,11 @@ class NotificationService {
                     },
                     select: { id: true },
                 });
+
+                // unread count increases only when read -> unread
+                if (existing.isRead) {
+                    shouldEmit = true;
+                }
 
                 await tx.notification.update({
                     where: { id: existing.id },
@@ -141,6 +153,8 @@ class NotificationService {
             }
 
             // 3. create new notification
+            shouldEmit = true;
+
             await tx.notification.create({
                 data: {
                     type,
@@ -175,6 +189,12 @@ class NotificationService {
                 },
             });
         });
+        if (shouldEmit) {
+            socketService.emitNotificationCount(
+                recipientId,
+                await this.getUnreadNotificationCount(recipientId),
+            );
+        }
     }
 
     async createPostOrQuestionLikeNotification(
@@ -193,8 +213,10 @@ class NotificationService {
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
         const now = new Date();
 
+        let shouldEmit = false;
+
         await prisma.$transaction(async (tx) => {
-            // 1. find existing (INSIDE transaction)
+            // 1. find existing
             const existing = await tx.notification.findFirst({
                 where: {
                     recipientId,
@@ -204,10 +226,13 @@ class NotificationService {
                         gte: oneHourAgo,
                     },
                 },
-                select: { id: true },
+                select: {
+                    id: true,
+                    isRead: true,
+                },
             });
 
-            // 2. if exists update
+            // 2. update existing
             if (existing) {
                 const existingActor = await tx.notificationActor.findUnique({
                     where: {
@@ -216,16 +241,25 @@ class NotificationService {
                             actorId,
                         },
                     },
-                    select: { id: true },
+                    select: {
+                        id: true,
+                    },
                 });
 
-                // update notification
+                // unread count increases only when read -> unread
+                if (existing.isRead) {
+                    shouldEmit = true;
+                }
+
                 await tx.notification.update({
-                    where: { id: existing.id },
+                    where: {
+                        id: existing.id,
+                    },
                     data: {
                         lastActorId: actorId,
                         isRead: false,
                         lastActivityAt: now,
+
                         ...(existingActor
                             ? {}
                             : {
@@ -236,7 +270,6 @@ class NotificationService {
                     },
                 });
 
-                // add actor only if new
                 if (!existingActor) {
                     await tx.notificationActor.create({
                         data: {
@@ -250,6 +283,8 @@ class NotificationService {
             }
 
             // 3. create new notification
+            shouldEmit = true;
+
             await tx.notification.create({
                 data: {
                     type,
@@ -282,6 +317,14 @@ class NotificationService {
                 },
             });
         });
+
+        // emit only when unread count actually changed
+        if (shouldEmit) {
+            socketService.emitNotificationCount(
+                recipientId,
+                await this.getUnreadNotificationCount(recipientId),
+            );
+        }
     }
 
     async getNotifications(userId: string, cursor: string | null) {
@@ -367,7 +410,7 @@ class NotificationService {
     }
 
     async getAnswerReplyNotification(notificationId: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
                 where: {
                     id: notificationId,
@@ -377,6 +420,7 @@ class NotificationService {
                     type: true,
                     isRead: true,
                     createdAt: true,
+                    recipientId: true,
 
                     answerReply: {
                         select: {
@@ -433,12 +477,34 @@ class NotificationService {
                 },
             });
 
-            if (!notification?.answerReply) {
+            if (!notification) {
                 return null;
             }
 
-            // mark as read only once
-            if (!notification.isRead) {
+            const wasUnread = !notification.isRead;
+
+            // target deleted -> auto mark read + return null
+            if (!notification?.answerReply) {
+                if (wasUnread) {
+                    await tx.notification.update({
+                        where: {
+                            id: notificationId,
+                        },
+                        data: {
+                            isRead: true,
+                        },
+                    });
+                }
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            // normal case -> mark read once
+            if (wasUnread) {
                 await tx.notification.update({
                     where: {
                         id: notificationId,
@@ -450,6 +516,8 @@ class NotificationService {
             }
 
             return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
                 notification: {
                     id: notification.id,
                     type: notification.type,
@@ -461,10 +529,31 @@ class NotificationService {
                 },
             };
         });
+        // if parent notification is deleted
+        if (!result) {
+            return null;
+        }
+
+        // emit after commit
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await this.getUnreadNotificationCount(result.recipientId),
+            );
+        }
+
+        // if answerReply was deleted
+        if (!result.notification) {
+            return null;
+        }
+
+        return {
+            notification: result.notification,
+        };
     }
 
     async getCommentReplyNotification(notificationId: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
                 where: {
                     id: notificationId,
@@ -474,6 +563,7 @@ class NotificationService {
                     type: true,
                     isRead: true,
                     createdAt: true,
+                    recipientId: true,
                     commentReply: {
                         select: {
                             postId: true,
@@ -526,10 +616,32 @@ class NotificationService {
                     },
                 },
             });
-            if (!notification?.commentReply) {
+
+            if (!notification) {
                 return null;
             }
-            if (!notification.isRead) {
+            const wasUnread = !notification.isRead;
+
+            if (!notification?.commentReply) {
+                if (wasUnread) {
+                    await tx.notification.update({
+                        where: {
+                            id: notificationId,
+                        },
+                        data: {
+                            isRead: true,
+                        },
+                    });
+                }
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            if (wasUnread) {
                 await tx.notification.update({
                     where: {
                         id: notificationId,
@@ -539,7 +651,10 @@ class NotificationService {
                     },
                 });
             }
+
             return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
                 notification: {
                     id: notification.id,
                     type: notification.type,
@@ -551,10 +666,27 @@ class NotificationService {
                 },
             };
         });
+
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await this.getUnreadNotificationCount(result.recipientId),
+            );
+        }
+
+        if (!result.notification) {
+            return null;
+        }
+
+        return { notification: result.notification };
     }
 
     async getAnswerReplyReplyNotification(notificationId: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
                 where: {
                     id: notificationId,
@@ -564,6 +696,7 @@ class NotificationService {
                     type: true,
                     isRead: true,
                     createdAt: true,
+                    recipientId: true,
                     answerReplyReply: {
                         select: {
                             questionId: true,
@@ -617,10 +750,33 @@ class NotificationService {
                     },
                 },
             });
-            if (!notification?.answerReplyReply) {
+
+            if (!notification) {
                 return null;
             }
-            if (!notification.isRead) {
+
+            const wasUnread = !notification.isRead;
+
+            if (!notification?.answerReplyReply) {
+                if (wasUnread) {
+                    await tx.notification.update({
+                        where: {
+                            id: notificationId,
+                        },
+                        data: {
+                            isRead: true,
+                        },
+                    });
+                }
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            if (wasUnread) {
                 await tx.notification.update({
                     where: {
                         id: notificationId,
@@ -631,6 +787,8 @@ class NotificationService {
                 });
             }
             return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
                 notification: {
                     id: notification.id,
                     type: notification.type,
@@ -642,10 +800,27 @@ class NotificationService {
                 },
             };
         });
+
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await this.getUnreadNotificationCount(result.recipientId),
+            );
+        }
+
+        if (!result.notification) {
+            return null;
+        }
+
+        return { notification: result.notification };
     }
 
     async getCommentReplyReplyNotification(notificationId: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
                 where: {
                     id: notificationId,
@@ -655,6 +830,7 @@ class NotificationService {
                     type: true,
                     isRead: true,
                     createdAt: true,
+                    recipientId: true,
                     commentReplyReply: {
                         select: {
                             postId: true,
@@ -708,10 +884,33 @@ class NotificationService {
                     },
                 },
             });
-            if (!notification?.commentReplyReply) {
+
+            if (!notification) {
                 return null;
             }
-            if (!notification.isRead) {
+
+            const wasUnread = !notification.isRead;
+
+            if (!notification?.commentReplyReply) {
+                if (wasUnread) {
+                    await tx.notification.update({
+                        where: {
+                            id: notificationId,
+                        },
+                        data: {
+                            isRead: true,
+                        },
+                    });
+                }
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            if (wasUnread) {
                 await tx.notification.update({
                     where: {
                         id: notificationId,
@@ -722,6 +921,8 @@ class NotificationService {
                 });
             }
             return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
                 notification: {
                     id: notification.id,
                     type: notification.type,
@@ -733,10 +934,26 @@ class NotificationService {
                 },
             };
         });
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await this.getUnreadNotificationCount(result.recipientId),
+            );
+        }
+
+        if (!result.notification) {
+            return null;
+        }
+
+        return { notification: result.notification };
     }
 
     async getCommentNotification(notificationId: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
                 where: { id: notificationId },
                 select: {
@@ -745,6 +962,7 @@ class NotificationService {
                     isRead: true,
                     createdAt: true,
                     lastActivityAt: true,
+                    recipientId: true,
                     postComment: {
                         select: {
                             postId: true,
@@ -754,8 +972,30 @@ class NotificationService {
                 },
             });
 
-            if (!notification || !notification.postComment) {
+            if (!notification) {
                 return null;
+            }
+
+            const wasUnread = !notification.isRead;
+
+            // case: post is deleted
+            if (!notification?.postComment) {
+                if (wasUnread) {
+                    await tx.notification.update({
+                        where: {
+                            id: notificationId,
+                        },
+                        data: {
+                            isRead: true,
+                        },
+                    });
+                }
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
             }
 
             let { lastCommentId, postId } = notification.postComment;
@@ -774,8 +1014,24 @@ class NotificationService {
                     select: { id: true },
                 });
 
+                // case: all comments are deleted
                 if (!fallback) {
-                    return null;
+                    if (wasUnread) {
+                        await tx.notification.update({
+                            where: {
+                                id: notificationId,
+                            },
+                            data: {
+                                isRead: true,
+                            },
+                        });
+                    }
+
+                    return {
+                        recipientId: notification.recipientId,
+                        shouldEmit: wasUnread,
+                        notification: null,
+                    };
                 }
 
                 // persist fix
@@ -788,7 +1044,8 @@ class NotificationService {
 
                 lastCommentId = fallback.id;
             }
-            if (!notification.isRead) {
+
+            if (wasUnread) {
                 await tx.notification.update({
                     where: {
                         id: notificationId,
@@ -800,6 +1057,8 @@ class NotificationService {
             }
 
             return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
                 notification: {
                     id: notification.id,
                     type: notification.type,
@@ -810,10 +1069,26 @@ class NotificationService {
                 },
             };
         });
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await this.getUnreadNotificationCount(result.recipientId),
+            );
+        }
+
+        if (!result.notification) {
+            return null;
+        }
+
+        return { notification: result.notification };
     }
 
     async getAnswerNotification(notificationId: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
                 where: { id: notificationId },
                 select: {
@@ -822,6 +1097,7 @@ class NotificationService {
                     isRead: true,
                     createdAt: true,
                     lastActivityAt: true,
+                    recipientId: true,
                     questionAnswer: {
                         select: {
                             questionId: true,
@@ -831,8 +1107,29 @@ class NotificationService {
                 },
             });
 
-            if (!notification || !notification.questionAnswer) {
+            if (!notification) {
                 return null;
+            }
+
+            const wasUnread = !notification.isRead;
+
+            if (!notification.questionAnswer) {
+                if (wasUnread) {
+                    await tx.notification.update({
+                        where: {
+                            id: notificationId,
+                        },
+                        data: {
+                            isRead: true,
+                        },
+                    });
+                }
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
             }
 
             let { lastAnswerId, questionId } = notification.questionAnswer;
@@ -852,7 +1149,22 @@ class NotificationService {
                 });
 
                 if (!fallback) {
-                    return null;
+                    if (wasUnread) {
+                        await tx.notification.update({
+                            where: {
+                                id: notificationId,
+                            },
+                            data: {
+                                isRead: true,
+                            },
+                        });
+                    }
+
+                    return {
+                        recipientId: notification.recipientId,
+                        shouldEmit: wasUnread,
+                        notification: null,
+                    };
                 }
 
                 // persist fix
@@ -865,7 +1177,8 @@ class NotificationService {
 
                 lastAnswerId = fallback.id;
             }
-            if (!notification.isRead) {
+
+            if (wasUnread) {
                 await tx.notification.update({
                     where: {
                         id: notificationId,
@@ -877,6 +1190,8 @@ class NotificationService {
             }
 
             return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
                 notification: {
                     id: notification.id,
                     type: notification.type,
@@ -887,10 +1202,26 @@ class NotificationService {
                 },
             };
         });
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await this.getUnreadNotificationCount(result.recipientId),
+            );
+        }
+
+        if (!result.notification) {
+            return null;
+        }
+
+        return { notification: result.notification };
     }
 
     async getQuestionLikeNotification(notificationId: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
                 where: { id: notificationId },
                 select: {
@@ -899,6 +1230,7 @@ class NotificationService {
                     isRead: true,
                     createdAt: true,
                     lastActivityAt: true,
+                    recipientId: true,
                     questionLike: {
                         select: {
                             questionId: true,
@@ -906,10 +1238,33 @@ class NotificationService {
                     },
                 },
             });
-            if (!notification?.questionLike) {
+
+            if (!notification) {
                 return null;
             }
-            if (!notification.isRead) {
+
+            const wasUnread = !notification.isRead;
+
+            if (!notification?.questionLike) {
+                if (wasUnread) {
+                    await tx.notification.update({
+                        where: {
+                            id: notificationId,
+                        },
+                        data: {
+                            isRead: true,
+                        },
+                    });
+                }
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            if (wasUnread) {
                 await tx.notification.update({
                     where: {
                         id: notificationId,
@@ -921,6 +1276,8 @@ class NotificationService {
             }
 
             return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
                 notification: {
                     id: notification.id,
                     type: notification.type,
@@ -930,10 +1287,26 @@ class NotificationService {
                 },
             };
         });
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await this.getUnreadNotificationCount(result.recipientId),
+            );
+        }
+
+        if (!result.notification) {
+            return null;
+        }
+
+        return { notification: result.notification };
     }
 
     async getPostLikeNotification(notificationId: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const notification = await prisma.notification.findUnique({
                 where: { id: notificationId },
                 select: {
@@ -942,6 +1315,7 @@ class NotificationService {
                     isRead: true,
                     createdAt: true,
                     lastActivityAt: true,
+                    recipientId: true,
                     postLike: {
                         select: {
                             postId: true,
@@ -949,10 +1323,32 @@ class NotificationService {
                     },
                 },
             });
-            if (!notification?.postLike) {
+            if (!notification) {
                 return null;
             }
-            if (!notification.isRead) {
+
+            const wasUnread = !notification.isRead;
+
+            if (!notification?.postLike) {
+                if (wasUnread) {
+                    await tx.notification.update({
+                        where: {
+                            id: notificationId,
+                        },
+                        data: {
+                            isRead: true,
+                        },
+                    });
+                }
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            if (wasUnread) {
                 await tx.notification.update({
                     where: {
                         id: notificationId,
@@ -964,6 +1360,8 @@ class NotificationService {
             }
 
             return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
                 notification: {
                     id: notification.id,
                     type: notification.type,
@@ -973,15 +1371,74 @@ class NotificationService {
                 },
             };
         });
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await this.getUnreadNotificationCount(result.recipientId),
+            );
+        }
+
+        if (!result.notification) {
+            return null;
+        }
+
+        return { notification: result.notification };
     }
 
     async getUnreadNotificationCount(userId: string) {
-        return await prisma.notification.count({
+        const notifications = await prisma.notification.findMany({
             where: {
                 recipientId: userId,
                 isRead: false,
             },
+            select: {
+                id: true,
+            },
+            take: 100,
         });
+
+        // already capped
+        if (notifications.length >= 100) {
+            return {
+                count: 99,
+                isCapped: true,
+            };
+        }
+
+        // only fetch remaining needed
+        const remaining = 100 - notifications.length;
+
+        const requests = await prisma.contactRequest.findMany({
+            where: {
+                OR: [
+                    {
+                        requesterId: userId,
+                        status: 'ACCEPTED',
+                        requesterHasRead: false,
+                    },
+                    {
+                        receiverId: userId,
+                        status: 'PENDING',
+                        receiverHasRead: false,
+                    },
+                ],
+            },
+            select: {
+                id: true,
+            },
+            take: remaining,
+        });
+
+        const total = notifications.length + requests.length;
+
+        return {
+            count: Math.min(total, 99),
+            isCapped: total >= 100,
+        };
     }
 }
 
