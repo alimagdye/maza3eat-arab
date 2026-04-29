@@ -2,7 +2,7 @@ import { prisma } from '../../lib/client.js';
 import ContactUtils from './contact.utils.js';
 import { ContactMethod } from '../../types/contact.js';
 import socketService from '../../sockets/socket.service.js';
-import notificationService from './../notifications/notification.service.js';
+import notificationCount from './../notifications/notification.count.js';
 
 class ContactRequestService {
     private contactUtils = ContactUtils;
@@ -73,7 +73,7 @@ class ContactRequestService {
         });
         socketService.emitNotificationCount(
             result.receiverId,
-            await notificationService.getUnreadNotificationCount(
+            await notificationCount.getUnreadNotificationCount(
                 result.receiverId,
             ),
         );
@@ -270,7 +270,7 @@ class ContactRequestService {
         if (result.status === 'ACCEPTED') {
             socketService.emitNotificationCount(
                 result.requesterId,
-                await notificationService.getUnreadNotificationCount(
+                await notificationCount.getUnreadNotificationCount(
                     result.requesterId,
                 ),
             );
@@ -339,7 +339,7 @@ class ContactRequestService {
 
             socketService.emitNotificationCount(
                 userId,
-                await notificationService.getUnreadNotificationCount(userId),
+                await notificationCount.getUnreadNotificationCount(userId),
             );
         }
 
