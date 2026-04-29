@@ -1,6 +1,8 @@
 import { prisma } from '../../lib/client.js';
 import ContactUtils from './contact.utils.js';
 import { ContactMethod } from '../../types/contact.js';
+import socketService from '../../sockets/socket.service.js';
+import notificationService from './../notifications/notification.service.js';
 
 class ContactRequestService {
     private contactUtils = ContactUtils;
@@ -16,7 +18,7 @@ class ContactRequestService {
         const now = new Date();
         const cooldownMs = 7 * 24 * 60 * 60 * 1000;
 
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const existing = await tx.contactRequest.findUnique({
                 where: {
                     requesterId_receiverId: {
@@ -53,6 +55,8 @@ class ContactRequestService {
                         reason,
                         status: 'PENDING',
                         lastActivityAt: now,
+                        receiverHasRead: false,
+                        requesterHasRead: false,
                     },
                 });
             }
@@ -67,6 +71,13 @@ class ContactRequestService {
                 },
             });
         });
+        socketService.emitNotificationCount(
+            result.receiverId,
+            await notificationService.getUnreadNotificationCount(
+                result.receiverId,
+            ),
+        );
+        return result;
     }
     // if I am sender only show which accepted
     // if I am receiver show which is pending
@@ -99,6 +110,8 @@ class ContactRequestService {
                 receiverId: true,
                 lastActivityAt: true,
                 status: true,
+                receiverHasRead: true,
+                requesterHasRead: true,
 
                 requester: {
                     select: {
@@ -143,6 +156,7 @@ class ContactRequestService {
                     receiver: request.receiver,
                     lastActivityAt: request.lastActivityAt,
                     type: 'SENT:ACCEPTED',
+                    isRead: request.requesterHasRead,
                 };
             }
 
@@ -152,6 +166,7 @@ class ContactRequestService {
                 receiver: 'YOU',
                 lastActivityAt: request.lastActivityAt,
                 type: 'RECEIVED:PENDING',
+                isRead: request.receiverHasRead,
             };
         });
 
@@ -169,83 +184,103 @@ class ContactRequestService {
     ) {
         const now = new Date();
 
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const contactRequest = await tx.contactRequest.findUnique({
                 where: { id: contactRequestId },
-                select: { receiverId: true, status: true },
+                select: {
+                    requesterId: true,
+                    receiverId: true,
+                    status: true,
+                },
             });
 
             if (!contactRequest || contactRequest.receiverId !== receiverId) {
-                // Contact request not found
                 throw new Error('NOT_FOUND');
             }
 
             if (contactRequest.status !== 'PENDING') {
-                // Contact request already responded to
                 throw new Error('ALREADY_RESPONDED');
             }
+
+            // common update payload
+            const baseData = {
+                status,
+                lastActivityAt: now,
+                receiverHasRead: true,
+            };
 
             if (status === 'DECLINED') {
                 const updatedRequest = await tx.contactRequest.update({
                     where: { id: contactRequestId },
-                    data: {
-                        status,
-                        lastActivityAt: now,
-                    },
+                    data: baseData,
                 });
 
                 return {
+                    requesterId: contactRequest.requesterId,
                     status: updatedRequest.status,
                     lastActivityAt: updatedRequest.lastActivityAt,
+                    isRead: updatedRequest.receiverHasRead,
                 };
             }
 
-            if (status === 'ACCEPTED') {
-                if (!contactInfo || !type) {
-                    // Contact info and type are required
-                    throw new Error('MISSING_CONTACT_INFO');
-                }
+            // ACCEPTED
+            if (!contactInfo || !type) {
+                throw new Error('MISSING_CONTACT_INFO');
+            }
 
-                const normalized = this.contactUtils.normalizeContact(
-                    type,
-                    contactInfo,
-                );
+            const normalized = this.contactUtils.normalizeContact(
+                type,
+                contactInfo,
+            );
 
-                // validate
-                if (!this.contactUtils.validateContact(type, normalized)) {
-                    // Invalid contact info format
-                    throw new Error('INVALID_CONTACT_INFO_FORMAT');
-                }
+            if (!this.contactUtils.validateContact(type, normalized)) {
+                throw new Error('INVALID_CONTACT_INFO_FORMAT');
+            }
 
-                // encrypt
-                const encrypted = this.contactUtils.encrypt(normalized);
+            const encrypted = this.contactUtils.encrypt(normalized);
 
-                const updatedRequest = await tx.contactRequest.update({
-                    where: { id: contactRequestId },
-                    data: {
-                        status,
-                        lastActivityAt: now,
-                        contactMethod: {
-                            upsert: {
-                                create: {
-                                    type,
-                                    value: encrypted,
-                                },
-                                update: {
-                                    type,
-                                    value: encrypted,
-                                },
+            const updatedRequest = await tx.contactRequest.update({
+                where: { id: contactRequestId },
+                data: {
+                    ...baseData,
+                    contactMethod: {
+                        upsert: {
+                            create: {
+                                type,
+                                value: encrypted,
+                            },
+                            update: {
+                                type,
+                                value: encrypted,
                             },
                         },
                     },
-                });
+                },
+            });
 
-                return {
-                    status: updatedRequest.status,
-                    lastActivityAt: updatedRequest.lastActivityAt,
-                };
-            }
+            return {
+                requesterId: contactRequest.requesterId,
+                status: updatedRequest.status,
+                lastActivityAt: updatedRequest.lastActivityAt,
+                isRead: updatedRequest.receiverHasRead,
+            };
         });
+
+        // emit only on ACCEPTED
+        if (result.status === 'ACCEPTED') {
+            socketService.emitNotificationCount(
+                result.requesterId,
+                await notificationService.getUnreadNotificationCount(
+                    result.requesterId,
+                ),
+            );
+        }
+
+        return {
+            status: result.status,
+            lastActivityAt: result.lastActivityAt,
+            isRead: result.isRead,
+        };
     }
 
     async getContactRequestById(userId: string, contactRequestId: string) {
@@ -270,6 +305,8 @@ class ContactRequestService {
                 reason: true,
                 status: true,
                 lastActivityAt: true,
+                requesterHasRead: true,
+                receiverHasRead: true,
                 contactMethod: {
                     select: {
                         type: true,
@@ -278,11 +315,34 @@ class ContactRequestService {
                 },
             },
         });
+
         if (!contactRequest) {
             throw new Error('NOT_FOUND');
         }
 
-        // if received:pending
+        const isRequester: boolean = contactRequest.requesterId === userId;
+
+        const wasUnread = isRequester
+            ? !contactRequest.requesterHasRead
+            : !contactRequest.receiverHasRead;
+
+        // update only if needed
+        if (wasUnread) {
+            await prisma.contactRequest.update({
+                where: {
+                    id: contactRequestId,
+                },
+                data: isRequester
+                    ? { requesterHasRead: true }
+                    : { receiverHasRead: true },
+            });
+
+            socketService.emitNotificationCount(
+                userId,
+                await notificationService.getUnreadNotificationCount(userId),
+            );
+        }
+
         const base = {
             id: contactRequest.id,
             requesterId: contactRequest.requesterId,
@@ -290,13 +350,15 @@ class ContactRequestService {
             reason: contactRequest.reason,
             status: contactRequest.status,
             lastActivityAt: contactRequest.lastActivityAt,
+            isRead: true,
         };
 
+        // receiver sees pending
         if (contactRequest.status === 'PENDING') {
             return base;
         }
 
-        // if sent:accepted
+        // requester sees accepted
         if (!contactRequest.contactMethod) {
             throw new Error('CONTACT_METHOD_MISSING');
         }

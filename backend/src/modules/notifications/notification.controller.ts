@@ -56,7 +56,7 @@ class NotificationController {
                 );
             res.status(200).json({
                 status: 'success',
-                data: { unreadCount: count },
+                data: count,
             });
         } catch (error) {
             res.status(500).json({

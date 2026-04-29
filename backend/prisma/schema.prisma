@@ -577,13 +577,15 @@ model ContactRequest {
   id String @id @default(uuid())
 
   requesterId String
-  requester   User   @relation("SentRequests", fields: [requesterId], references: [id])
+  requester   User   @relation("SentRequests", fields: [requesterId], references: [id], onDelete: Cascade)
 
   receiverId String
-  receiver   User   @relation("ReceivedRequests", fields: [receiverId], references: [id])
+  receiver   User   @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
 
   status ContactRequestStatus @default(PENDING)
   reason String
+  receiverHasRead Boolean @default(false)
+  requesterHasRead Boolean @default(false)
 
   contactMethod ContactMethod?
 
