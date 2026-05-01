@@ -293,7 +293,7 @@ class ReplyService {
         userId: string | null = null,
         excludeReplyId: string | null = null,
     ) {
-        const pageSize = 10;
+        const pageSize = 5;
 
         const answer = await prisma.answer.findUnique({
             where: { id: answerId },
@@ -358,11 +358,12 @@ class ReplyService {
 
         const hasMore = replies.length > pageSize;
 
-        const sliced = hasMore ? replies.slice(0, pageSize) : replies;
+        if (hasMore) replies.pop();
 
-        const result = sliced.map((reply) => {
+        const result = replies.map((reply) => {
             const likedByMe =
                 userId && reply.likes ? reply.likes.length > 0 : false;
+            const isOwner = !!userId && reply.authorId === userId;
 
             return {
                 id: reply.id,
@@ -380,10 +381,14 @@ class ReplyService {
                 },
                 hasReplies: reply.answerReplies.length > 0,
                 likedByMe,
+                permissions: {
+                    canDelete: isOwner,
+                    canReport: !isOwner,
+                },
             };
         });
 
-        const nextCursor = hasMore ? sliced[sliced.length - 1].id : null;
+        const nextCursor = hasMore ? replies[replies.length - 1].id : null;
 
         return {
             replies: result,
@@ -398,11 +403,44 @@ class ReplyService {
         userId: string | null = null,
         excludeReplyId: string | null = null,
     ) {
-        const pageSize = 10;
+        const pageSize = 5;
 
         const parent = await prisma.answerReply.findUnique({
             where: { id: replyId },
-            select: { id: true },
+            select: {
+                id: true,
+                answerId: true,
+                content: true,
+                likesCount: true,
+                depth: true,
+                path: true,
+                createdAt: true,
+                author: {
+                    select: {
+                        id: true,
+                        name: true,
+                        avatar: true,
+                        tier: {
+                            select: {
+                                id: true,
+                                name: true,
+                                badgeColor: true,
+                            },
+                        },
+                    },
+                },
+                answer: {
+                    select: {
+                        questionId: true,
+                    },
+                },
+                ...(userId && {
+                    likes: {
+                        where: { userId },
+                        select: { userId: true },
+                    },
+                }),
+            },
         });
 
         if (!parent) {
@@ -460,16 +498,16 @@ class ReplyService {
 
         const hasMore = replies.length > pageSize;
 
-        const sliced = hasMore ? replies.slice(0, pageSize) : replies;
+        if (hasMore) replies.pop();
 
-        const result = sliced.map((reply) => {
+        const result = replies.map((reply) => {
             const likedByMe =
                 userId && reply.likes ? reply.likes.length > 0 : false;
+            const isOwner = !!userId && reply.authorId === userId;
 
             return {
                 id: reply.id,
                 answerId: reply.answerId,
-                authorId: reply.authorId,
                 content: reply.content,
                 likesCount: reply.likesCount,
                 depth: reply.depth,
@@ -483,12 +521,32 @@ class ReplyService {
                 },
                 hasReplies: reply.answerReplies.length > 0,
                 likedByMe,
+                permissions: {
+                    canDelete: isOwner,
+                    canReport: !isOwner,
+                },
             };
         });
 
-        const nextCursor = hasMore ? sliced[sliced.length - 1].id : null;
-
+        const nextCursor = hasMore ? replies[replies.length - 1].id : null;
+        const isParentOwner = !!userId && parent.author.id === userId;
         return {
+            questionId: parent.answer.questionId,
+            parentReply: {
+                id: parent.id,
+                content: parent.content,
+                likesCount: parent.likesCount,
+                depth: parent.depth,
+                path: parent.path,
+                createdAt: parent.createdAt,
+                author: parent.author,
+                likedByMe:
+                    userId && parent.likes ? parent.likes.length > 0 : false,
+                permissions: {
+                    canDelete: isParentOwner,
+                    canReport: !isParentOwner,
+                },
+            },
             replies: result,
             nextCursor,
             hasMore,

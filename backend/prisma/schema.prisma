@@ -84,10 +84,10 @@ model User {
   googleId String   @unique
   name     String
   email    String   @unique
-  avatar   String?
+  avatar   String
   role     UserRole @default(USER)
 
-  tierId Int?
+  tierId Int? // see it when work on admin upgrade users tiers
   tier   Tier? @relation(fields: [tierId], references: [id])
 
   posts       Post[]
@@ -154,7 +154,7 @@ model Tier {
 model Post {
   id       String @id @default(uuid())
   authorId String
-  author   User   @relation(fields: [authorId], references: [id])
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   title     String
   titleNormalized String
@@ -230,7 +230,7 @@ model Comment {
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   authorId String
-  author   User   @relation(fields: [authorId], references: [id])
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   content   String
   likesCount Int @default(0)
@@ -253,7 +253,7 @@ model Reply {
   commentId String
   comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
   authorId String
-  author   User   @relation(fields: [authorId], references: [id])
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   parentReplyId String?
   parentReply   Reply? @relation("ReplyThread", fields: [parentReplyId], references: [id])
 
@@ -373,7 +373,7 @@ model HomeAd {
 model Question {
   id       String @id @default(uuid())
   authorId String
-  author   User   @relation(fields: [authorId], references: [id])
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   title     String
   titleNormalized String
@@ -423,7 +423,7 @@ model Answer {
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   authorId String
-  author   User   @relation(fields: [authorId], references: [id])
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   content   String
   totalVoteValue Int @default(0)
@@ -446,7 +446,7 @@ model AnswerReply {
   answerId String
   answer   Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
   authorId String
-  author   User   @relation(fields: [authorId], references: [id])
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   parentReplyId String?
   parentReply   AnswerReply? @relation("AnswerReplyThread", fields: [parentReplyId], references: [id])
 
