@@ -64,23 +64,23 @@ class AnswerService {
         cursor: string | null = null,
         userId: string | null = null,
     ) {
-        const pageSize = 5;
+        const pageSize = 10;
 
         const question = await prisma.question.findFirst({
             where: {
                 id: questionId,
-                status: 'APPROVED',
             },
+            select: { status: true },
         });
 
-        if (!question) {
+        if (!question || question.status !== 'APPROVED') {
             throw new Error('question_NOT_FOUND');
         }
 
         const answers = await prisma.answer.findMany({
             where: { questionId },
 
-            take: pageSize,
+            take: pageSize + 1,
 
             ...(cursor && {
                 skip: 1,
@@ -97,6 +97,7 @@ class AnswerService {
                         avatar: true,
                         tier: {
                             select: {
+                                id: true,
                                 name: true,
                                 badgeColor: true,
                             },
@@ -112,10 +113,15 @@ class AnswerService {
             },
         });
 
+        const hasMore = answers.length > pageSize;
+        if (hasMore) answers.pop();
+
         const nextCursor =
             answers.length === pageSize ? answers[answers.length - 1].id : null;
 
         const result = answers.map((answer) => {
+            const isOwner = !!userId && answer.authorId === userId;
+
             let myVote = 0;
 
             if (userId && answer.votes) {
@@ -125,7 +131,6 @@ class AnswerService {
             return {
                 id: answer.id,
                 questionId: answer.questionId,
-                authorId: answer.authorId,
                 content: answer.content,
 
                 totalVoteValue: answer.totalVoteValue,
@@ -141,13 +146,17 @@ class AnswerService {
                 },
 
                 myVote,
+                permissions: {
+                    canDelete: isOwner,
+                    canReport: !isOwner, // guest can report after sign in, so guest can also see report button
+                },
             };
         });
 
         return {
             answers: result,
             nextCursor,
-            hasMore: answers.length === pageSize,
+            hasMore,
         };
     }
 
