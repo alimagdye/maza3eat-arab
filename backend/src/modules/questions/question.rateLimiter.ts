@@ -30,7 +30,7 @@ const getQuestionsLimiter = (
 };
 
 const questionRateLimiter = {
-    preAuthLimiter: createIPLimiter(40, 'Too many requests'),
+    preAuthLimiter: createIPLimiter(400, 'Too many requests'),
     createQuestionLimiter: createLimiter(
         10,
         'Too many question creation requests. Please try again later.',

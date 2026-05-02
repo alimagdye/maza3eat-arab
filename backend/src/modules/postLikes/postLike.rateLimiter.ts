@@ -1,6 +1,13 @@
-import { createLimiter } from '../../middlewares/rateLimit/rateLimiter.factory.js';
+import {
+    createIPLimiter,
+    createLimiter,
+} from '../../middlewares/rateLimit/rateLimiter.factory.js';
 
 const likeRateLimiter = {
+    preAuthLimiter: createIPLimiter(
+        200,
+        'Too many like/unlike attempts. Please try again later.',
+    ),
     likeOrUnlikePostLimiter: createLimiter(
         10,
         'Too many like/unlike attempts for this post.',

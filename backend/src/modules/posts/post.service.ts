@@ -24,6 +24,7 @@ class PostService {
             height: number;
             originalName: string;
         }[],
+        role: 'ADMIN' | 'USER' | null = null,
     ) {
         // -------------------------
         // 1. normalize base inputs
@@ -34,8 +35,8 @@ class PostService {
         // -------------------------
         // 2. validation
         // -------------------------
-        if (!trimmedTitle || trimmedTitle.length < 10) {
-            throw new Error('Title must be at least 10 characters');
+        if (!trimmedTitle || trimmedTitle.length < 3) {
+            throw new Error('Title must be at least 3 characters');
         }
 
         if (!trimmedContent || trimmedContent.length < 20) {
@@ -121,6 +122,7 @@ class PostService {
             // create post
             const post = await tx.post.create({
                 data: {
+                    ...(role === 'ADMIN' ? { status: 'APPROVED' } : {}),
                     title: trimmedTitle,
                     titleNormalized,
                     content: trimmedContent,
@@ -128,7 +130,7 @@ class PostService {
                 },
             });
 
-            // insert images (bulk)
+            // insert images
             await tx.postImage.createMany({
                 data: uploads.map((img) => ({
                     postId: post.id,
@@ -171,13 +173,14 @@ class PostService {
         sort: string,
         cursor: string | null = null,
         search: string = '',
+        status: string = 'APPROVED',
     ) {
         const take = 10;
 
         const role = scope === 'community' ? 'USER' : 'ADMIN';
 
         const where: any = {
-            status: 'APPROVED',
+            status: status.toUpperCase(),
             author: { role },
         };
 
@@ -306,10 +309,19 @@ class PostService {
         };
     }
 
-    async getPostById(postId: string, userId: string | null) {
+    async getPostById(
+        postId: string,
+        userId: string | null = null,
+        role: 'ADMIN' | 'USER' | null = null,
+    ) {
         const post = await prisma.post.findFirst({
-            where: { id: postId, status: 'APPROVED' },
+            where: {
+                id: postId,
+                ...(role === 'ADMIN' ? {} : { status: 'APPROVED' }),
+            },
             select: {
+                id: true,
+                status: true,
                 title: true,
                 content: true,
                 createdAt: true,
@@ -355,6 +367,8 @@ class PostService {
         }
         const likedByMe = userId && post.likes ? post.likes.length > 0 : false;
         return {
+            id: post.id,
+            ...(role === 'ADMIN' && { status: post.status }),
             title: post?.title,
             content: post?.content,
             publishDate: post?.createdAt,
@@ -373,11 +387,15 @@ class PostService {
         };
     }
 
-    async deletePostById(postId: string, userId: string) {
+    async deletePostById(
+        postId: string,
+        userId: string,
+        role: 'ADMIN' | 'USER' | null = null,
+    ) {
         const post = await prisma.post.findFirst({
             where: {
                 id: postId,
-                authorId: userId,
+                ...(role === 'ADMIN' ? {} : { authorId: userId }),
             },
             select: {
                 id: true,
