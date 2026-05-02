@@ -1,10 +1,9 @@
 import { prisma } from '../../lib/client.js';
 import replyUtils from './reply.utils.js';
 import NotificationService from '../notifications/notification.service.js';
-import path from 'path';
 
 class ReplyService {
-    private MAX_DEPTH = 10;
+    private MAX_DEPTH = 20;
     private notificationService = NotificationService;
     async replyToComment(commentId: string, userId: string, content: string) {
         const result = await prisma.$transaction(async (tx) => {
@@ -232,7 +231,7 @@ class ReplyService {
         return result.reply;
     }
 
-    async deleteReply(replyId: string, userId: string) {
+    async deleteReply(replyId: string, userId: string, role: 'USER' | 'ADMIN') {
         return await prisma.$transaction(async (tx) => {
             const reply = await tx.reply.findUnique({
                 where: { id: replyId },
@@ -253,7 +252,7 @@ class ReplyService {
                 throw new Error('REPLY_NOT_FOUND');
             }
 
-            if (reply.authorId !== userId) {
+            if (reply.authorId !== userId && role !== 'ADMIN') {
                 throw new Error('FORBIDDEN');
             }
 
@@ -294,6 +293,7 @@ class ReplyService {
         cursor: string | null = null,
         userId: string | null = null,
         excludeReplyId: string | null = null,
+        role: 'USER' | 'ADMIN' | null = null,
     ) {
         const pageSize = 5;
 
@@ -380,7 +380,7 @@ class ReplyService {
                 hasReplies: reply.replies.length > 0,
                 likedByMe,
                 permissions: {
-                    canDelete: isOwner,
+                    canDelete: isOwner || role === 'ADMIN',
                     canReport: !isOwner,
                 },
             };
@@ -400,6 +400,7 @@ class ReplyService {
         cursor: string | null = null,
         userId: string | null = null,
         excludeReplyId: string | null = null,
+        role: 'USER' | 'ADMIN' | null = null,
     ) {
         const pageSize = 5;
 
@@ -521,7 +522,7 @@ class ReplyService {
                 hasReplies: reply.replies.length > 0,
                 likedByMe,
                 permissions: {
-                    canDelete: isOwner,
+                    canDelete: isOwner || role === 'ADMIN',
                     canReport: !isOwner,
                 },
             };
@@ -542,7 +543,7 @@ class ReplyService {
                 likedByMe:
                     userId && parent.likes ? parent.likes.length > 0 : false,
                 permissions: {
-                    canDelete: isParentOwner,
+                    canDelete: isParentOwner || role === 'ADMIN',
                     canReport: !isParentOwner,
                 },
             },

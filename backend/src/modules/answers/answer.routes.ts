@@ -20,6 +20,7 @@ router.post(
 
 router.get(
     '/:questionId/answers',
+    answerRateLimiter.preAuthLimiter,
     optionalAuth,
     answerRateLimiter.getAnswersByQuestionId,
     answerValidation.validateGetAnswersByQuestionId,

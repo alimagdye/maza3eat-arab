@@ -47,11 +47,13 @@ class CommentController {
             const { postId } = req.params as { postId: string };
             const cursor = req.query.cursor as string | null;
             const userId = req.user ? req.user.sub : null;
+            const role = req.user ? req.user.role : null;
 
             const data = await this.commentService.getCommentsByPostId(
                 postId,
                 cursor,
                 userId,
+                role
             );
 
             res.json({
@@ -78,11 +80,13 @@ class CommentController {
             const { commentId } = req.params as { commentId: string };
             const { postId } = req.params as { postId: string };
             const userId = req.user.sub;
+            const role = req.user.role;
 
             await this.commentService.deleteCommentById(
                 commentId,
                 postId,
                 userId,
+                role
             );
             res.status(204).send();
         } catch (error: any) {

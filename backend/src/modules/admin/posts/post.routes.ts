@@ -1,32 +1,19 @@
-import { Router } from 'express';
-
+import Router from 'express';
 import postController from './post.controller.js';
-import { uploadPostImages } from '../../middlewares/uploadPostImages.js';
 import postValidation from './post.validation.js';
-import validate from '../../middlewares/validateRequest.js';
-import { requireAuth } from '../../middlewares/requireAuth.js';
+import validate from '../../../middlewares/validateRequest.js';
+import { uploadPostImages } from '../../../middlewares/uploadPostImages.js';
 import postRateLimiter from './post.rateLimiter.js';
-import commentRoutes from '../comments/comment.routes.js';
-import { optionalAuth } from '../../middlewares/optionalAuth.js';
 
 const router = Router();
 
 router.post(
     '/',
-    postRateLimiter.preAuthLimiter,
-    requireAuth,
     postRateLimiter.createPostLimiter,
     uploadPostImages,
     postValidation.validateCreatePost,
     validate,
     postController.createPost,
-);
-
-router.get(
-    '/home',
-    postValidation.validateGetHomePosts,
-    validate,
-    postController.getHomePosts,
 );
 
 router.get(
@@ -39,24 +26,26 @@ router.get(
 
 router.get(
     '/:postId',
-    postRateLimiter.preAuthLimiter,
-    optionalAuth,
     postRateLimiter.getPostByIdLimiter,
     postValidation.validatePostId,
     validate,
     postController.getPostById,
 );
 
+router.patch(
+    '/:postId',
+    postRateLimiter.approveOrRejectPostLimiter,
+    postValidation.validateApproveOrRejectPost,
+    validate,
+    postController.approveOrRejectPost,
+);
+
 router.delete(
     '/:postId',
-    postRateLimiter.preAuthLimiter,
-    requireAuth,
     postRateLimiter.deletePostByIdLimiter,
     postValidation.validatePostId,
     validate,
     postController.deletePostById,
 );
-
-router.use('/', commentRoutes);
 
 export default router;

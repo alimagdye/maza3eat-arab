@@ -1,15 +1,15 @@
 import { Request, Response } from 'express';
-import PostService from './post.service.js';
-import postUtils from './post.utils.js';
+import postUtils from '../../posts/post.utils.js';
+import AdminPostService from './post.service.js';
 
 class PostController {
-    private postService = PostService;
+    private postService = AdminPostService;
 
     createPost = async (req: Request, res: Response) => {
         const { title, content, tags } = req.body;
         const userId = req.user.sub;
-        const files = req.files as Express.Multer.File[];
         const role = req.user.role;
+        const files = req.files as Express.Multer.File[];
 
         // -------------------------
         // 1. Basic validation (cheap checks only)
@@ -115,17 +115,17 @@ class PostController {
     };
 
     getPosts = async (req: Request, res: Response) => {
-        const scope: string = (req.query.scope as string) || 'community';
         const cursor = req.query.cursor as string | null;
-        const sort: string = (req.query.sort as string) || 'latest';
         const search: string = (req.query.search as string) || '';
+        const status: string = (req.query.status as string) || 'PENDING';
 
         try {
             const result = await this.postService.getPosts(
-                scope,
-                sort,
+                'community',
+                'latest',
                 cursor,
                 search,
+                status,
             );
 
             return res.status(200).json({
@@ -144,10 +144,15 @@ class PostController {
 
     getPostById = async (req: Request, res: Response) => {
         const { postId } = req.params as { postId: string };
-        const userId = req.user ? req.user.sub : null;
+        const userId = req.user.sub;
+        const role = req.user.role;
 
         try {
-            const post = await this.postService.getPostById(postId, userId);
+            const post = await this.postService.getPostById(
+                postId,
+                userId,
+                role,
+            );
             if (!post) {
                 return res
                     .status(404)
@@ -198,24 +203,37 @@ class PostController {
         }
     };
 
-    getHomePosts = async (req: Request, res: Response) => {
-        const scope: string = (req.query.scope as string) || 'community';
-
+    approveOrRejectPost = async (req: Request, res: Response) => {
+        const userId = req.user.sub;
+        const { postId } = req.params as { postId: string };
+        const action = req.body.action as 'approve' | 'reject';
+        const reason = req.body.reason as string | null;
         try {
-            const posts = await this.postService.getHomePosts(scope);
+            const post = await this.postService.approveOrRejectPost(
+                postId,
+                userId,
+                action,
+                reason,
+            );
 
             return res.status(200).json({
                 status: 'success',
-                data: posts,
+                data: post,
             });
         } catch (error: any) {
             console.error(error);
 
-            if (error.message === 'INVALID_SCOPE') {
+            if (error.message === 'POST_ALREADY_REVIEWED') {
                 return res.status(400).json({
                     status: 'fail',
-                    message: 'Invalid scope',
+                    message: 'Post has already been reviewed',
                 });
+            }
+
+            if (error.message === 'POST_NOT_FOUND') {
+                return res
+                    .status(404)
+                    .json({ status: 'fail', message: 'Post not found' });
             }
 
             return res.status(500).json({

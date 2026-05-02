@@ -81,7 +81,7 @@ import userRoutes from './modules/users/user.routes.js';
 import notificationRoutes from './modules/notifications/notification.routes.js';
 import contactRequestRoutes from './modules/contactRequests/contact.routes.js';
 import reportRoutes from './modules/reports/report.routes.js';
-// import adminRoutes from "./modules/admin/routes";
+import adminRoutes from './modules/admin/admin.routes.js';
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/posts', postRoutes);
@@ -96,7 +96,7 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/contact-requests', contactRequestRoutes);
 app.use('/api/v1/reports', reportRoutes);
-// app.use("/api/v1/admin", adminRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // -----------------------------
 // 404 Handler

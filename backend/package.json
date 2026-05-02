@@ -1,5 +1,7 @@
 {
     "name": "maza3eat-arab",
+    "author": "Ali Magdy",
+    "license": "MIT",
     "version": "1.0.0",
     "description": "A social media traveling blog platform using Node.js/typescript, Express, and MongoDB.",
     "keywords": [
@@ -25,8 +27,6 @@
     "prisma": {
         "seed": "node prisma/seed.js"
     },
-    "author": "Ali Magdy",
-    "license": "MIT",
     "dependencies": {
         "@prisma/client": "^6.19.2",
         "cloudinary": "^2.9.0",

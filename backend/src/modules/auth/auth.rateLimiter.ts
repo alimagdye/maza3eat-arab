@@ -1,4 +1,3 @@
-import rateLimit from 'express-rate-limit';
 import { createIPLimiter } from '../../middlewares/rateLimit/rateLimiter.factory.js';
 
 const authRateLimiter = {

@@ -26,7 +26,7 @@ const getPostsLimiter = (req: Request, res: Response, next: NextFunction) => {
 };
 
 const postRateLimiter = {
-    preAuthLimiter: createIPLimiter(40, 'Too many requests'),
+    preAuthLimiter: createIPLimiter(400, 'Too many requests'),
     createPostLimiter: createLimiter(
         10,
         'Too many post creation requests. Please try again later.',

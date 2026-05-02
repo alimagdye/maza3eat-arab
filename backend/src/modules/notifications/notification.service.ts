@@ -5,13 +5,19 @@ import notificationCount from './notification.count.js';
 
 class NotificationService {
     // Writers
-    createReplyNotification = notificationWriter.createReplyNotification;
+    createReplyNotification =
+        notificationWriter.createReplyNotification.bind(notificationWriter);
     createCommentOrAnswerNotification =
-        notificationWriter.createCommentOrAnswerNotification;
+        notificationWriter.createCommentOrAnswerNotification.bind(
+            notificationWriter,
+        );
     createPostOrQuestionLikeNotification =
-        notificationWriter.createPostOrQuestionLikeNotification;
+        notificationWriter.createPostOrQuestionLikeNotification.bind(
+            notificationWriter,
+        );
     // counter
-    getUnreadNotificationCount = notificationCount.getUnreadNotificationCount;
+    getUnreadNotificationCount =
+        notificationCount.getUnreadNotificationCount.bind(notificationCount);
 
     async getNotifications(userId: string, cursor: string | null) {
         const take = 10;
