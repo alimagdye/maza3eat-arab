@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import postUtils from '../../posts/post.utils.js';
 import AdminPostService from './post.service.js';
 
-class PostController {
+class AdminPostController {
     private postService = AdminPostService;
 
     createPost = async (req: Request, res: Response) => {
@@ -244,4 +244,4 @@ class PostController {
     };
 }
 
-export default new PostController();
+export default new AdminPostController();

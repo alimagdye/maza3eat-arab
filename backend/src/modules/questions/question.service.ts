@@ -26,18 +26,8 @@ class QuestionService {
         content: string,
         tags: string[],
         userId: string,
+        role: 'ADMIN' | 'USER' | null = null,
     ) {
-        // -------------------------
-        // 1. Validation
-        // -------------------------
-        if (!title || title.trim().length < 10) {
-            throw new Error('Title must be at least 10 characters');
-        }
-
-        if (!content || content.trim().length < 20) {
-            throw new Error('Content must be at least 20 characters');
-        }
-
         if (!tags || tags.length === 0) {
             throw new Error('Must have at least 1 tag');
         }
@@ -102,6 +92,7 @@ class QuestionService {
             // create question
             const question = await tx.question.create({
                 data: {
+                    ...(role === 'ADMIN' ? { status: 'APPROVED' } : {}),
                     title: title.trim(),
                     titleNormalized,
                     content: content.trim(),
@@ -139,11 +130,12 @@ class QuestionService {
         sort: string,
         cursor: string | null = null,
         search: string = '',
+        status: string = 'APPROVED',
     ) {
         const take = 10;
 
         const where: any = {
-            status: 'APPROVED',
+            status: status.toUpperCase(),
         };
 
         if (search && search.trim() !== '') {
@@ -250,10 +242,19 @@ class QuestionService {
         };
     }
 
-    async getQuestionById(questionId: string, userId: string | null = null) {
+    async getQuestionById(
+        questionId: string,
+        userId: string | null = null,
+        role: 'ADMIN' | 'USER' | null = null,
+    ) {
         const question = await prisma.question.findFirst({
-            where: { id: questionId, status: 'APPROVED' },
+            where: {
+                id: questionId,
+                ...(role === 'ADMIN' ? {} : { status: 'APPROVED' }),
+            },
             select: {
+                id: true,
+                status: true,
                 title: true,
                 content: true,
                 createdAt: true,
@@ -294,6 +295,8 @@ class QuestionService {
             userId && 'likes' in question ? question.likes.length > 0 : false;
 
         return {
+            id: question.id,
+            ...(role === 'ADMIN' && { status: question.status }),
             title: question?.title,
             content: question?.content,
             publishDate: question?.createdAt,
@@ -311,11 +314,15 @@ class QuestionService {
         };
     }
 
-    async deleteQuestionById(questionId: string, userId: string) {
+    async deleteQuestionById(
+        questionId: string,
+        userId: string,
+        role: 'ADMIN' | 'USER' | null = null,
+    ) {
         const question = await prisma.question.findFirst({
             where: {
                 id: questionId,
-                authorId: userId,
+                ...(role === 'ADMIN' ? {} : { authorId: userId }),
             },
             select: {
                 id: true,

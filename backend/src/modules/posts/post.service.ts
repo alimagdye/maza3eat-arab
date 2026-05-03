@@ -32,17 +32,6 @@ class PostService {
         const trimmedTitle = title?.trim();
         const trimmedContent = content?.trim();
 
-        // -------------------------
-        // 2. validation
-        // -------------------------
-        if (!trimmedTitle || trimmedTitle.length < 3) {
-            throw new Error('Title must be at least 3 characters');
-        }
-
-        if (!trimmedContent || trimmedContent.length < 20) {
-            throw new Error('Content must be at least 20 characters');
-        }
-
         if (!uploads || uploads.length === 0) {
             throw new Error('Post must have at least 1 image');
         }

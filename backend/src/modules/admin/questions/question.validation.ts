@@ -1,34 +1,35 @@
 import { body, param, query, ValidationChain } from 'express-validator';
 
-const postValidation: {
-    validateCreatePost: ValidationChain[];
-    validateGetPosts: ValidationChain[];
-    validatePostId: ValidationChain[];
-    validateApproveOrRejectPost: ValidationChain[];
+const questionValidation: {
+    validateCreateQuestion: ValidationChain[];
+    validateGetQuestions: ValidationChain[];
+    validateQuestionId: ValidationChain[];
+    validateApproveOrRejectQuestion: ValidationChain[];
 } = {
-    validateCreatePost: [
+    validateCreateQuestion: [
         body('title')
             .isString()
+            .withMessage('title must be string')
             .trim()
             .isLength({ min: 3, max: 200 })
-            .withMessage('Incorrect title length'),
+            .withMessage('bad title length'),
         body('content')
             .isString()
+            .withMessage('content must be string')
             .trim()
             .isLength({ min: 3, max: 5000 })
-            .withMessage('Incorrect content length'),
+            .withMessage('bad content length'),
         body('tags')
-            .toArray()
             .isArray({ min: 1, max: 10 })
             .withMessage('Tags must be min 1 and max 10'),
         body('tags.*')
             .isString()
             .trim()
             .isLength({ min: 3, max: 30 })
-            .withMessage('Incorrect tag length'),
+            .withMessage('bad tag length'),
     ],
 
-    validateGetPosts: [
+    validateGetQuestions: [
         query('cursor').optional().isUUID().withMessage('Invalid cursor'),
         query('search')
             .optional()
@@ -42,11 +43,12 @@ const postValidation: {
             .withMessage('Invalid status option'),
     ],
 
-    validatePostId: [
-        param('postId').isUUID().withMessage('Invalid post ID format'),
+    validateQuestionId: [
+        param('questionId').isUUID().withMessage('Invalid question ID format'),
     ],
-    validateApproveOrRejectPost: [
-        param('postId').isUUID().withMessage('Invalid post ID format'),
+
+    validateApproveOrRejectQuestion: [
+        param('questionId').isUUID().withMessage('Invalid question ID format'),
         body('action')
             .isIn(['approve', 'reject'])
             .withMessage('Action must be either approve or reject'),
@@ -56,9 +58,9 @@ const postValidation: {
             .trim()
             .isLength({ min: 1, max: 500 })
             .withMessage(
-                'Reason is required when rejecting a post and must be between 1 and 500 characters',
+                'Reason is required when rejecting a question and must be between 1 and 500 characters',
             ),
     ],
 };
 
-export default postValidation;
+export default questionValidation;
