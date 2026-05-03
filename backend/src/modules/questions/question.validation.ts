@@ -9,24 +9,24 @@ const questionValidation: {
     validateCreateQuestion: [
         body('title')
             .isString()
+            .withMessage('title must be string')
             .trim()
             .isLength({ min: 3, max: 200 })
-            .withMessage('Title must be between 3 and 200 characters'),
+            .withMessage('bad title length'),
         body('content')
             .isString()
+            .withMessage('content must be string')
             .trim()
-            .isLength({ min: 1, max: 5000 })
-            .withMessage('Content is required'),
+            .isLength({ min: 3, max: 5000 })
+            .withMessage('bad content length'),
         body('tags')
             .isArray({ min: 1, max: 10 })
             .withMessage('Tags must be min 1 and max 10'),
         body('tags.*')
             .isString()
             .trim()
-            .isLength({ min: 1, max: 30 })
-            .withMessage(
-                'Each tag must be a string between 1 and 30 characters',
-            ),
+            .isLength({ min: 3, max: 30 })
+            .withMessage('bad tag length'),
     ],
 
     validateGetQuestions: [

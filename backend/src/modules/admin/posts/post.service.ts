@@ -6,7 +6,6 @@ class AdminPostService {
     getPosts = publicPostService.getPosts.bind(publicPostService);
     getPostById = publicPostService.getPostById.bind(publicPostService);
     deletePostById = publicPostService.deletePostById.bind(publicPostService);
-    getHomePosts = publicPostService.getHomePosts.bind(publicPostService);
 
     async approveOrRejectPost(
         postId: string,
