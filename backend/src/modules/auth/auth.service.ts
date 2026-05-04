@@ -6,25 +6,50 @@ import jwt from 'jsonwebtoken';
 
 class AuthService {
     private MAX_SESSIONS = 5;
+
     async findOrCreateUser(
         email: string,
         name: string,
         avatar: string,
         googleId: string,
     ) {
-        return await prisma.user.upsert({
+        const existingUser = await prisma.user.findUnique({
             where: { email },
-            update: {
-                name,
-                avatar,
+            include: {
+                ban: true,
             },
-            create: {
+        });
+
+        // existing banned user -> deny login
+        if (existingUser?.ban) {
+            const error = new Error('ACCOUNT_BANNED');
+            (error as any).banReason = existingUser.ban.reason;
+            throw error;
+        }
+
+        // existing active user -> update profile
+        if (existingUser) {
+            return prisma.user.update({
+                where: { id: existingUser.id },
+                data: {
+                    name,
+                    avatar,
+                    googleId,
+                },
+            });
+        }
+
+        // new user
+        return prisma.user.create({
+            data: {
                 email,
                 name,
                 avatar,
                 googleId,
                 tier: {
-                    connect: { name: 'Beginner' },
+                    connect: {
+                        name: 'Beginner',
+                    },
                 },
             },
         });
@@ -149,6 +174,13 @@ class AuthService {
             });
 
             if (!user) {
+                // revoke current session
+                await tx.refreshToken.delete({
+                    where: {
+                        id: storedToken.id,
+                    },
+                });
+
                 throw new Error('UNAUTHORIZED');
             }
 

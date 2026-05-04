@@ -132,8 +132,13 @@ class GoogleAuthController {
             });
 
             return res.redirect(process.env.FRONTEND_URL!);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
+            if (error.message === 'ACCOUNT_BANNED') {
+                return res.redirect(
+                    `${process.env.FRONTEND_URL}/banned?reason=${encodeURIComponent(error.banReason)}`,
+                );
+            }
             return res.status(500).json({
                 status: 'error',
                 message: 'Authentication failed',

@@ -11,6 +11,7 @@ class UserService {
                 role: true,
                 tier: {
                     select: {
+                        id: true,
                         name: true,
                         badgeColor: true,
                         description: true,
