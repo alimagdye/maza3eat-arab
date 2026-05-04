@@ -95,6 +95,9 @@ class AuthController {
                 error.message === 'INVALID_TOKEN_TYPE' ||
                 error.message === 'UNAUTHORIZED'
             ) {
+                res.clearCookie('accessToken', this.baseCookieOptions);
+                res.clearCookie('refreshToken', this.baseCookieOptions);
+
                 return res.status(401).json({
                     status: 'fail',
                     message: error.message,

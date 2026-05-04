@@ -13,6 +13,14 @@ class SocketService {
             isCapped: unreadNotification.isCapped,
         });
     }
+    emitForceLogout(userId: string, reason: string) {
+        const io = getIO();
+
+        io.to(`user:${userId}`).emit(SOCKET_EVENTS.FORCE_LOGOUT, {
+            code: 'ACCOUNT_BANNED',
+            message: `You have been banned due to ${reason}`,
+        });
+    }
 }
 
 export default new SocketService();

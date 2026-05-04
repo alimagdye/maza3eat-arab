@@ -56,7 +56,7 @@ const postValidation: {
             .trim()
             .isLength({ min: 1, max: 500 })
             .withMessage(
-                'Reason is required when rejecting a post and must be between 1 and 500 characters',
+                'Reason is required and must be between 1 and 500 characters',
             ),
     ],
 };

@@ -111,7 +111,8 @@ model User {
   notificationActors NotificationActor[]
   reports         Report[]       @relation("UserReports")
   reviewedReports Report[]       @relation("AdminReviewedReports")
-
+  ban             Ban?
+  bansIssued Ban[] @relation("AdminBans")
   auditLogs AuditLog[]
 
   createdAt     DateTime       @default(now())
@@ -120,6 +121,24 @@ model User {
 
   @@index([role])
   @@index([tierId])
+  @@index([createdAt, id])
+}
+
+model Ban {
+  id String @id @default(uuid())
+
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  reason String
+
+  bannedById String
+  bannedBy User @relation("AdminBans", fields: [bannedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([bannedById])
 }
 
 model RefreshToken {
