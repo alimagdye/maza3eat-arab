@@ -113,8 +113,8 @@ class UserService {
         }
 
         try {
-            await prisma.$transaction(async (tx) => {
-                await tx.ban.create({
+            const ban = await prisma.$transaction(async (tx) => {
+                const ban = await tx.ban.create({
                     data: {
                         userId,
                         bannedById: adminId,
@@ -127,10 +127,12 @@ class UserService {
                         userId,
                     },
                 });
+
+                return ban;
             });
             socketService.emitForceLogout(userId, reason);
 
-            return { banned: true };
+            return { banned: true, ban };
         } catch (error: any) {
             if (error.code === 'P2002') {
                 throw new Error('USER_ALREADY_BANNED');
@@ -147,11 +149,59 @@ class UserService {
                     userId,
                 },
             });
-            return { unbanned: true };
         } catch (error: any) {
             if (error.code === 'P2025') {
                 throw new Error('USER_NOT_BANNED');
             }
+            throw error;
+        }
+    }
+
+    async updateUserTier(userId: string, tierId: number) {
+        try {
+            const updatedUser = await prisma.user.update({
+                where: {
+                    id: userId,
+                    role: 'USER',
+                    ban: null,
+                },
+                data: {
+                    tier: {
+                        connect: {
+                            id: tierId,
+                        },
+                    },
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    avatar: true,
+                    createdAt: true,
+                    tier: {
+                        select: {
+                            id: true,
+                            name: true,
+                            badgeColor: true,
+                        },
+                    },
+                },
+            });
+
+            // TODO: notify user about tier change
+
+            return updatedUser;
+        } catch (error: any) {
+            // relation connect failed: tier not found
+            if (error.code === 'P2025' && error.message.includes('connect')) {
+                throw new Error('TIER_NOT_FOUND');
+            }
+
+            // user lookup failed
+            if (error.code === 'P2025') {
+                throw new Error('USER_NOT_FOUND');
+            }
+
             throw error;
         }
     }

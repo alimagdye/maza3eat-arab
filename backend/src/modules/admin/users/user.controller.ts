@@ -31,11 +31,15 @@ class UserAdminController {
         const adminId = req.user.sub;
 
         try {
-            await this.userAdminService.banUser(userId, reason, adminId);
+            const result = await this.userAdminService.banUser(
+                userId,
+                reason,
+                adminId,
+            );
 
             return res.status(200).json({
                 status: 'success',
-                message: 'User banned successfully',
+                data: result,
             });
         } catch (error: any) {
             console.error('Error banning user:', error);
@@ -43,6 +47,7 @@ class UserAdminController {
             if (error.message === 'USER_ALREADY_BANNED') {
                 return res.status(409).json({
                     status: 'fail',
+                    data: { banned: true },
                     message: 'User is already banned',
                 });
             }
@@ -50,6 +55,7 @@ class UserAdminController {
             if (error.message === 'USER_NOT_FOUND') {
                 return res.status(404).json({
                     status: 'fail',
+                    data: { banned: false },
                     message: 'User not found',
                 });
             }
@@ -57,6 +63,7 @@ class UserAdminController {
             if (error.message === 'CANNOT_BAN_ADMIN') {
                 return res.status(403).json({
                     status: 'fail',
+                    data: { banned: false },
                     message: 'Cannot ban an admin user',
                 });
             }
@@ -84,7 +91,45 @@ class UserAdminController {
             if (error.message === 'USER_NOT_BANNED') {
                 return res.status(400).json({
                     status: 'fail',
-                    message: 'User is not banned',
+                    message: 'User is already not banned or not found',
+                });
+            }
+
+            return res.status(500).json({
+                status: 'error',
+                message: 'Internal server error',
+            });
+        }
+    };
+
+    updateUserTier = async (req: Request, res: Response) => {
+        const userId = req.params.userId as string;
+        const tierId = req.body.tierId as number;
+
+        try {
+            const result = await this.userAdminService.updateUserTier(
+                userId,
+                tierId,
+            );
+
+            return res.status(200).json({
+                status: 'success',
+                data: result,
+            });
+        } catch (error: any) {
+            console.error('Error updating user tier:', error);
+
+            if (error.message === 'USER_NOT_FOUND') {
+                return res.status(404).json({
+                    status: 'fail',
+                    message: 'User not found',
+                });
+            }
+
+            if (error.message === 'TIER_NOT_FOUND') {
+                return res.status(404).json({
+                    status: 'fail',
+                    message: 'Tier not found',
                 });
             }
 

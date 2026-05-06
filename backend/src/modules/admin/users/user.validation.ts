@@ -4,6 +4,7 @@ const userValidation: {
     validateGetUsers: ValidationChain[];
     validateUnBanUser: ValidationChain[];
     validateBanUser: ValidationChain[];
+    validateUpdateUserTier: ValidationChain[];
 } = {
     validateGetUsers: [
         query('cursor').optional().isUUID().withMessage('Invalid cursor'),
@@ -22,6 +23,10 @@ const userValidation: {
             .trim()
             .isLength({ min: 3, max: 500 })
             .withMessage('Ban reason must be between 3 and 500 characters'),
+    ],
+    validateUpdateUserTier: [
+        param('userId').isUUID().withMessage('Invalid user ID format'),
+        body('tierId').isInt({ min: 1 }).withMessage('Invalid tier ID'),
     ],
 };
 
