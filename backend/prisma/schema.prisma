@@ -87,8 +87,8 @@ model User {
   avatar   String
   role     UserRole @default(USER)
 
-  tierId Int? // see it when work on admin upgrade users tiers
-  tier   Tier? @relation(fields: [tierId], references: [id])
+  tierId Int // see it when work on admin upgrade users tiers
+  tier   Tier @relation(fields: [tierId], references: [id])
 
   posts       Post[]
   comments    Comment[]
@@ -158,8 +158,9 @@ model RefreshToken {
 model Tier {
   id          Int     @id @default(autoincrement())
   name        String  @unique
-  badgeColor  String
-  description String?
+  badgeColor  String  @unique
+  description String
+  isSystem Boolean @default(false)
 
   users User[]
 

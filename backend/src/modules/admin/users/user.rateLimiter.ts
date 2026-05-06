@@ -9,6 +9,10 @@ const userRateLimiter = {
         60,
         'Too many approve/reject requests. Please try again later.',
     ),
+    updateUserTierLimiter: createLimiter(
+        60,
+        'Too many update tier requests. Please try again later.',
+    ),
 };
 
 export default userRateLimiter;

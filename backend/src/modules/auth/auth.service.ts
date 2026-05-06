@@ -20,14 +20,14 @@ class AuthService {
             },
         });
 
-        // existing banned user -> deny login
+        // existing banned user: deny login
         if (existingUser?.ban) {
             const error = new Error('ACCOUNT_BANNED');
             (error as any).banReason = existingUser.ban.reason;
             throw error;
         }
 
-        // existing active user -> update profile
+        // existing active user: update profile
         if (existingUser) {
             return prisma.user.update({
                 where: { id: existingUser.id },
@@ -48,7 +48,7 @@ class AuthService {
                 googleId,
                 tier: {
                     connect: {
-                        name: 'Beginner',
+                        name: 'مبتدئ',
                     },
                 },
             },

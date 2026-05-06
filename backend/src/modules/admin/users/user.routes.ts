@@ -30,4 +30,12 @@ router.patch(
     userController.unbanUser,
 );
 
+router.patch(
+    '/:userId/tier',
+    userRateLimiter.updateUserTierLimiter,
+    userValidation.validateUpdateUserTier,
+    validate,
+    userController.updateUserTier,
+);
+
 export default router;
