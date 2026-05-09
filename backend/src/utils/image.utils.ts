@@ -1,8 +1,9 @@
 import sharp from 'sharp';
-import cloudinary from '../../config/cloudinary.js';
+import cloudinary from '../config/cloudinary.js';
 import crypto from 'crypto';
-class PostUtils {
-    safeName(name: string) {
+
+class ImageUtils {
+    private safeName(name: string) {
         return name
             .toLowerCase()
             .replace(/\.[^/.]+$/, '')
@@ -11,13 +12,16 @@ class PostUtils {
             .slice(0, 30);
     }
 
-    generateId(filename: string) {
+    private generateId(filename: string) {
         const random = crypto.randomBytes(6).toString('hex');
-
         return `${Date.now()}-${random}-${this.safeName(filename)}`;
     }
 
-    async uploadBuffer(buffer: Buffer, filename: string) {
+    async uploadBuffer(
+        buffer: Buffer,
+        filename: string,
+        folder: 'posts' | 'ads',
+    ) {
         const optimizedBuffer = await sharp(buffer)
             .resize({
                 width: 2048,
@@ -25,7 +29,7 @@ class PostUtils {
                 fit: 'inside',
                 withoutEnlargement: true,
             })
-            .webp({ quality: 85 }) // 85 is the sweet spot: visually lossless but tiny file size
+            .webp({ quality: 85 })
             .toBuffer();
 
         return new Promise<{
@@ -37,7 +41,7 @@ class PostUtils {
         }>((resolve, reject) => {
             const stream = cloudinary.uploader.upload_stream(
                 {
-                    folder: 'posts',
+                    folder,
                     public_id: this.generateId(filename),
                     transformation: [
                         {
@@ -48,7 +52,6 @@ class PostUtils {
                 },
                 (error, result) => {
                     if (error) return reject(error);
-
                     resolve({
                         url: result!.secure_url,
                         publicId: result!.public_id,
@@ -68,4 +71,4 @@ class PostUtils {
     }
 }
 
-export default new PostUtils();
+export default new ImageUtils();

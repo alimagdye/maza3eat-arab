@@ -1,10 +1,10 @@
 import { prisma } from '../../lib/client.js';
 import { normalizeArabic } from '../../utils/normalizeArabic.js';
-import PostUtils from './post.utils.js';
+import ImageUtils from '../../utils/image.utils.js';
 import { HomeScope, HomeScopeType, ScopeCacheState } from '../../types/post.js';
 
 class PostService {
-    private postUtils = PostUtils;
+    private imageUtils = ImageUtils;
     private homePostsCache: Record<HomeScopeType, ScopeCacheState> = {
         community: { data: [], expiresAt: 0, refreshPromise: null },
         admin: { data: [], expiresAt: 0, refreshPromise: null },
@@ -411,7 +411,7 @@ class PostService {
         const tagIds = post.tags.map((tag) => tag.tagId);
 
         if (publicIds.length > 0) {
-            await this.postUtils.deleteImages(publicIds);
+            await this.imageUtils.deleteImages(publicIds);
         }
 
         await prisma.$transaction(async (tx) => {

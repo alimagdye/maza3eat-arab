@@ -33,7 +33,7 @@ class AdService {
                 title: true,
                 text: true,
                 imageUrl: true,
-                imageName: true,
+                imageOriginalName: true,
                 link: true,
                 buttonText: true,
             },
@@ -46,7 +46,7 @@ class AdService {
             text: ad.text,
             image: {
                 url: ad.imageUrl,
-                name: ad.imageName,
+                name: ad.imageOriginalName,
             },
             link: ad.link,
             buttonText: ad.buttonText,
@@ -114,7 +114,7 @@ class AdService {
             buttonText: homeAd.ad.buttonText,
             image: {
                 url: homeAd.ad.imageUrl,
-                name: homeAd.ad.imageName,
+                name: homeAd.ad.imageOriginalName,
             },
         }));
 
