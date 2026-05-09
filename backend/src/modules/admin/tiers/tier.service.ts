@@ -32,9 +32,9 @@ class TierService {
 
     async updateTier(
         id: number,
-        name: string,
-        description: string,
-        badgeColor: string,
+        name?: string,
+        description?: string,
+        badgeColor?: string,
     ) {
         try {
             return await prisma.tier.update({

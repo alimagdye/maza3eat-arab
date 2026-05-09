@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import postController from './post.controller.js';
-import { uploadPostImages } from '../../middlewares/uploadPostImages.js';
+import { uploadImages } from '../../middlewares/uploadImages.js';
 import postValidation from './post.validation.js';
 import validate from '../../middlewares/validateRequest.js';
 import { requireAuth } from '../../middlewares/requireAuth.js';
@@ -16,7 +16,7 @@ router.post(
     postRateLimiter.preAuthLimiter,
     requireAuth,
     postRateLimiter.createPostLimiter,
-    uploadPostImages,
+    uploadImages({ fieldName: 'images', min: 1, max: 6 }),
     postValidation.validateCreatePost,
     validate,
     postController.createPost,

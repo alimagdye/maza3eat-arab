@@ -2,7 +2,7 @@ import Router from 'express';
 import postController from './post.controller.js';
 import postValidation from './post.validation.js';
 import validate from '../../../middlewares/validateRequest.js';
-import { uploadPostImages } from '../../../middlewares/uploadPostImages.js';
+import { uploadImages } from '../../../middlewares/uploadImages.js';
 import postRateLimiter from './post.rateLimiter.js';
 
 const router = Router();
@@ -10,7 +10,7 @@ const router = Router();
 router.post(
     '/',
     postRateLimiter.createPostLimiter,
-    uploadPostImages,
+    uploadImages({ fieldName: 'images', min: 1, max: 6 }),
     postValidation.validateCreatePost,
     validate,
     postController.createPost,

@@ -7,6 +7,7 @@ import adminPostRoutes from './posts/post.routes.js';
 import adminQuestionRoutes from './questions/question.routes.js';
 import adminUserRoutes from './users/user.routes.js';
 import adminTierRoutes from './tiers/tier.routes.js';
+import adminAdRoutes from './ads/ad.routes.js';
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.use('/posts', adminPostRoutes);
 router.use('/questions', adminQuestionRoutes);
 router.use('/users', adminUserRoutes);
 router.use('/tiers', adminTierRoutes);
+router.use('/ads', adminAdRoutes);
 
 export default router;

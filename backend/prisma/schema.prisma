@@ -113,6 +113,7 @@ model User {
   reviewedReports Report[]       @relation("AdminReviewedReports")
   ban             Ban?
   bansIssued Ban[] @relation("AdminBans")
+  adsAdded Ad[] @relation("AdminAds")
   auditLogs AuditLog[]
 
   createdAt     DateTime       @default(now())
@@ -818,13 +819,22 @@ model Ad {
   id       String  @id @default(uuid())
   title    String
   text     String
-  imageUrl String
-  imageName String
   link     String
   buttonText String
+  
   amountPaid Float
   priority Int
+
+  imageOriginalName String
+  imageUrl String @unique
+  imagePublicId String @unique
+  imageWidth    Int
+  imageHeight   Int
+
   homeAds    HomeAd[]
+
+  addedById String
+  addedBy User @relation("AdminAds", fields: [addedById], references: [id])
 
   isActive Boolean @default(true)
   expireAt DateTime

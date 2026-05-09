@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import PostService from './post.service.js';
-import postUtils from './post.utils.js';
+import imageUtils from '../../utils/image.utils.js';
 
 class PostController {
     private postService = PostService;
@@ -11,9 +11,7 @@ class PostController {
         const files = req.files as Express.Multer.File[];
         const role = req.user.role;
 
-        // -------------------------
-        // 1. Basic validation (cheap checks only)
-        // -------------------------
+        // 1. basic validation (cheap checks only)
         if (!Array.isArray(tags)) {
             return res.status(400).json({
                 status: 'fail',
@@ -44,17 +42,17 @@ class PostController {
         }[] = [];
 
         try {
-            // -------------------------
-            // 2. Upload images
-            // -------------------------
+            // 2. upload images
             uploads = await Promise.all(
                 files.map((file) =>
-                    postUtils.uploadBuffer(file.buffer, file.originalname),
+                    imageUtils.uploadBuffer(
+                        file.buffer,
+                        file.originalname,
+                        'posts',
+                    ),
                 ),
             );
-            // -------------------------
-            // 3. Create post
-            // -------------------------
+            // 3. create post
             const post = await this.postService.createPost(
                 title,
                 content,
@@ -70,13 +68,11 @@ class PostController {
         } catch (error: any) {
             console.error(error);
 
-            // -------------------------
-            // 4. Cleanup uploaded images
-            // -------------------------
+            // 4. cleanup uploaded images
             if (uploads.length > 0) {
                 const publicIds = uploads.map((u) => u.publicId);
 
-                await postUtils
+                await imageUtils
                     .deleteImages(publicIds)
                     .catch((cleanupError) => {
                         console.error(
@@ -86,11 +82,9 @@ class PostController {
                     });
             }
 
-            // -------------------------
-            // 5. Proper error response
-            // -------------------------
+            // 5. proper error response
             if (error instanceof Error) {
-                // Sniff for our custom validation errors thrown from the service layer
+                // sniff for our custom validation errors thrown from the service layer
                 const isValidationError =
                     error.message.includes('must be') ||
                     error.message.includes('Max') ||
