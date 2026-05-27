@@ -1,10 +1,17 @@
 import { prisma } from '../../lib/client.js';
 import replyUtils from './reply.utils.js';
-import notificationService from '../notifications/notification.service.js';
+import NotificationService from '../notifications/notification.service.js';
 class ReplyService {
     private MAX_DEPTH = 10;
+    private notificationService = NotificationService;
     async replyToAnswer(answerId: string, userId: string, content: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`
+                SELECT id FROM "Answer"
+                WHERE id = ${answerId}
+                FOR UPDATE
+            `;
+
             const answer = await tx.answer.findUnique({
                 where: { id: answerId },
                 select: {
@@ -84,25 +91,32 @@ class ReplyService {
                 },
             });
 
-            await notificationService.createReplyNotification({
-                tx,
-                recipientId: answer.authorId,
-                actorId: userId,
-
-                questionId: answer.questionId,
-                answerId: answer.id,
-                replyId: reply.id,
-                type: 'ANSWER_REPLY',
-            });
-
-            return reply;
+            return { reply, answer };
         });
+
+        await this.notificationService.createReplyNotification({
+            recipientId: result.answer.authorId,
+            actorId: userId,
+
+            questionId: result.answer.questionId,
+            answerId: result.answer.id,
+            replyId: result.reply.id,
+            type: 'ANSWER_REPLY',
+        });
+
+        return result.reply;
     }
 
     async replyToReply(replyId: string, userId: string, content: string) {
         const MAX_DEPTH = this.MAX_DEPTH;
 
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`
+                SELECT id FROM "AnswerReply"
+                WHERE id = ${replyId}
+                FOR UPDATE
+            `;
+
             const parent = await tx.answerReply.findUnique({
                 where: { id: replyId },
                 select: {
@@ -200,22 +214,23 @@ class ReplyService {
                 },
             });
 
-            await notificationService.createReplyNotification({
-                tx,
-                recipientId: parent.authorId,
-                actorId: userId,
-
-                questionId: parent.answer.questionId,
-                parentReplyId: parent.id,
-                replyId: reply.id,
-                type: 'ANSWER_REPLY_REPLY',
-            });
-
-            return reply;
+            return { reply, parent };
         });
+
+        await this.notificationService.createReplyNotification({
+            recipientId: result.parent.authorId,
+            actorId: userId,
+
+            questionId: result.parent.answer.questionId,
+            parentReplyId: result.parent.id,
+            replyId: result.reply.id,
+            type: 'ANSWER_REPLY_REPLY',
+        });
+
+        return result.reply;
     }
 
-    async deleteReply(replyId: string, userId: string) {
+    async deleteReply(replyId: string, userId: string, role: 'USER' | 'ADMIN') {
         return await prisma.$transaction(async (tx) => {
             const reply = await tx.answerReply.findUnique({
                 where: { id: replyId },
@@ -236,7 +251,7 @@ class ReplyService {
                 throw new Error('REPLY_NOT_FOUND');
             }
 
-            if (reply.authorId !== userId) {
+            if (reply.authorId !== userId && role !== 'ADMIN') {
                 throw new Error('FORBIDDEN');
             }
 
@@ -277,8 +292,9 @@ class ReplyService {
         cursor: string | null = null,
         userId: string | null = null,
         excludeReplyId: string | null = null,
+        role: 'USER' | 'ADMIN' | null = null,
     ) {
-        const pageSize = 10;
+        const pageSize = 5;
 
         const answer = await prisma.answer.findUnique({
             where: { id: answerId },
@@ -300,7 +316,7 @@ class ReplyService {
                 }),
             },
 
-            take: pageSize,
+            take: pageSize + 1,
 
             ...(cursor && {
                 skip: 1,
@@ -317,6 +333,7 @@ class ReplyService {
                         avatar: true,
                         tier: {
                             select: {
+                                id: true,
                                 name: true,
                                 badgeColor: true,
                             },
@@ -340,14 +357,18 @@ class ReplyService {
             },
         });
 
+        const hasMore = replies.length > pageSize;
+
+        if (hasMore) replies.pop();
+
         const result = replies.map((reply) => {
             const likedByMe =
                 userId && reply.likes ? reply.likes.length > 0 : false;
+            const isOwner = !!userId && reply.authorId === userId;
 
             return {
                 id: reply.id,
                 answerId: reply.answerId,
-                authorId: reply.authorId,
                 content: reply.content,
                 likesCount: reply.likesCount,
                 depth: reply.depth,
@@ -361,16 +382,19 @@ class ReplyService {
                 },
                 hasReplies: reply.answerReplies.length > 0,
                 likedByMe,
+                permissions: {
+                    canDelete: isOwner || role === 'ADMIN',
+                    canReport: !isOwner,
+                },
             };
         });
 
-        const nextCursor =
-            replies.length === pageSize ? replies[replies.length - 1].id : null;
+        const nextCursor = hasMore ? replies[replies.length - 1].id : null;
 
         return {
             replies: result,
             nextCursor,
-            hasMore: replies.length === pageSize,
+            hasMore,
         };
     }
 
@@ -379,12 +403,46 @@ class ReplyService {
         cursor: string | null = null,
         userId: string | null = null,
         excludeReplyId: string | null = null,
+        role: 'USER' | 'ADMIN' | null = null,
     ) {
-        const pageSize = 10;
+        const pageSize = 5;
 
         const parent = await prisma.answerReply.findUnique({
             where: { id: replyId },
-            select: { id: true },
+            select: {
+                id: true,
+                answerId: true,
+                content: true,
+                likesCount: true,
+                depth: true,
+                path: true,
+                createdAt: true,
+                author: {
+                    select: {
+                        id: true,
+                        name: true,
+                        avatar: true,
+                        tier: {
+                            select: {
+                                id: true,
+                                name: true,
+                                badgeColor: true,
+                            },
+                        },
+                    },
+                },
+                answer: {
+                    select: {
+                        questionId: true,
+                    },
+                },
+                ...(userId && {
+                    likes: {
+                        where: { userId },
+                        select: { userId: true },
+                    },
+                }),
+            },
         });
 
         if (!parent) {
@@ -399,7 +457,7 @@ class ReplyService {
                 }),
             },
 
-            take: pageSize,
+            take: pageSize + 1,
 
             ...(cursor && {
                 skip: 1,
@@ -416,6 +474,7 @@ class ReplyService {
                         avatar: true,
                         tier: {
                             select: {
+                                id: true,
                                 name: true,
                                 badgeColor: true,
                             },
@@ -439,17 +498,18 @@ class ReplyService {
             },
         });
 
-        const nextCursor =
-            replies.length === pageSize ? replies[replies.length - 1].id : null;
+        const hasMore = replies.length > pageSize;
+
+        if (hasMore) replies.pop();
 
         const result = replies.map((reply) => {
             const likedByMe =
                 userId && reply.likes ? reply.likes.length > 0 : false;
+            const isOwner = !!userId && reply.authorId === userId;
 
             return {
                 id: reply.id,
                 answerId: reply.answerId,
-                authorId: reply.authorId,
                 content: reply.content,
                 likesCount: reply.likesCount,
                 depth: reply.depth,
@@ -463,13 +523,35 @@ class ReplyService {
                 },
                 hasReplies: reply.answerReplies.length > 0,
                 likedByMe,
+                permissions: {
+                    canDelete: isOwner || role === 'ADMIN',
+                    canReport: !isOwner,
+                },
             };
         });
 
+        const nextCursor = hasMore ? replies[replies.length - 1].id : null;
+        const isParentOwner = !!userId && parent.author.id === userId;
         return {
+            questionId: parent.answer.questionId,
+            parentReply: {
+                id: parent.id,
+                content: parent.content,
+                likesCount: parent.likesCount,
+                depth: parent.depth,
+                path: parent.path,
+                createdAt: parent.createdAt,
+                author: parent.author,
+                likedByMe:
+                    userId && parent.likes ? parent.likes.length > 0 : false,
+                permissions: {
+                    canDelete: isParentOwner || role === 'ADMIN',
+                    canReport: !isParentOwner,
+                },
+            },
             replies: result,
             nextCursor,
-            hasMore: replies.length === pageSize,
+            hasMore,
         };
     }
 }

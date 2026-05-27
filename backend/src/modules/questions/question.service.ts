@@ -26,92 +26,103 @@ class QuestionService {
         content: string,
         tags: string[],
         userId: string,
+        role: 'ADMIN' | 'USER' | null = null,
     ) {
-        if (!tags || tags.length < 1) {
-            throw new Error('question must have at least 1 tag');
+        if (!tags || tags.length === 0) {
+            throw new Error('Must have at least 1 tag');
         }
 
         if (tags.length > 10) {
             throw new Error('Max 10 tags');
         }
 
-        const uniqueOriginalTags = [
-            ...new Set(tags.map((tag) => tag.trim()).filter(Boolean)),
-        ];
+        // -------------------------
+        // 2. Normalize + dedupe
+        // -------------------------
+        const tagMap = new Map<string, string>();
 
-        const normalizedList = uniqueOriginalTags.map((tag) =>
-            normalizeArabic(tag),
-        );
+        for (const tag of tags) {
+            if (typeof tag !== 'string') {
+                throw new Error('Invalid tag');
+            }
+
+            const trimmed = tag.trim();
+            if (!trimmed) continue;
+
+            if (trimmed.length > 30) {
+                throw new Error('Tag too long (max 30)');
+            }
+
+            const normalized = normalizeArabic(trimmed).toLowerCase();
+
+            // dedupe AFTER normalization
+            if (!tagMap.has(normalized)) {
+                tagMap.set(normalized, trimmed);
+            }
+        }
+
+        const normalizedTags = Array.from(tagMap.keys());
+
+        if (normalizedTags.length === 0) {
+            throw new Error('No valid tags');
+        }
 
         const titleNormalized = normalizeArabic(title);
 
-        return prisma.$transaction(async (tx) => {
-            // 1. Create question
-            const newQuestion = await tx.question.create({
+        // -------------------------
+        // 3. Transaction
+        // -------------------------
+        return await prisma.$transaction(async (tx) => {
+            // ensure global tags exist
+            await tx.tag.createMany({
+                data: normalizedTags.map((n) => ({ normalizedName: n })),
+                skipDuplicates: true,
+            });
+
+            // fetch tag IDs (authoritative state)
+            const tagRecords = await tx.tag.findMany({
+                where: { normalizedName: { in: normalizedTags } },
+                select: { id: true, normalizedName: true },
+            });
+
+            const tagIdMap = new Map(
+                tagRecords.map((t) => [t.normalizedName, t.id]),
+            );
+
+            // create question
+            const question = await tx.question.create({
                 data: {
-                    title,
+                    ...(role === 'ADMIN' ? { status: 'APPROVED' } : {}),
+                    title: title.trim(),
                     titleNormalized,
-                    content,
+                    content: content.trim(),
                     authorId: userId,
                 },
             });
 
-            // 2. Get existing tags (FAST if indexed)
-            const existing = await tx.tag.findMany({
-                where: {
-                    normalizedName: { in: normalizedList },
-                },
-                select: {
-                    id: true,
-                    normalizedName: true,
-                },
+            // build relations safely
+            const relations = normalizedTags.map((n) => {
+                const tagId = tagIdMap.get(n);
+
+                if (tagId === undefined) {
+                    throw new Error(
+                        `Invariant failed: missing tagId for "${n}"`,
+                    );
+                }
+
+                return {
+                    questionId: question.id,
+                    tagId,
+                    name: tagMap.get(n)!, // original user input
+                };
             });
 
-            const existingSet = new Set(existing.map((t) => t.normalizedName));
-
-            // 3. Create missing tags
-            const missing = normalizedList
-                .filter((n) => !existingSet.has(n))
-                .map((n) => ({
-                    normalizedName: n,
-                }));
-
-            if (missing.length > 0) {
-                await tx.tag.createMany({
-                    data: missing,
-                    skipDuplicates: true,
-                });
-            }
-
-            // 4. Fetch ALL tags (single query)
-            const allTags = await tx.tag.findMany({
-                where: {
-                    normalizedName: { in: normalizedList },
-                },
-                select: {
-                    id: true,
-                    normalizedName: true,
-                },
-            });
-
-            const tagIdByNormalized = new Map(
-                allTags.map((tag) => [tag.normalizedName, tag.id]),
-            );
-
-            // 5. Create relations
+            // bulk insert relations
             await tx.questionTag.createMany({
-                data: uniqueOriginalTags.map((original) => {
-                    const normalized = normalizeArabic(original);
-
-                    return {
-                        questionId: newQuestion.id,
-                        tagId: tagIdByNormalized.get(normalized)!,
-                        name: original,
-                    };
-                }),
+                data: relations,
             });
 
-            return newQuestion;
+            return question;
         });
     }
 
@@ -119,11 +130,12 @@ class QuestionService {
         sort: string,
         cursor: string | null = null,
         search: string = '',
+        status: string = 'APPROVED',
     ) {
         const take = 10;
 
         const where: any = {
-            status: 'APPROVED',
+            status: status.toUpperCase(),
         };
 
         if (search && search.trim() !== '') {
@@ -230,10 +242,19 @@ class QuestionService {
         };
     }
 
-    async getQuestionById(questionId: string, userId: string | null = null) {
+    async getQuestionById(
+        questionId: string,
+        userId: string | null = null,
+        role: 'ADMIN' | 'USER' | null = null,
+    ) {
         const question = await prisma.question.findFirst({
-            where: { id: questionId, status: 'APPROVED' },
+            where: {
+                id: questionId,
+                ...(role === 'ADMIN' ? {} : { status: 'APPROVED' }),
+            },
             select: {
+                id: true,
+                status: true,
                 title: true,
                 content: true,
                 createdAt: true,
@@ -274,6 +295,8 @@ class QuestionService {
             userId && 'likes' in question ? question.likes.length > 0 : false;
 
         return {
+            id: question.id,
+            ...(role === 'ADMIN' && { status: question.status }),
             title: question?.title,
             content: question?.content,
             publishDate: question?.createdAt,
@@ -291,11 +314,15 @@ class QuestionService {
         };
     }
 
-    async deleteQuestionById(questionId: string, userId: string) {
+    async deleteQuestionById(
+        questionId: string,
+        userId: string,
+        role: 'ADMIN' | 'USER' | null = null,
+    ) {
         const question = await prisma.question.findFirst({
             where: {
                 id: questionId,
-                authorId: userId,
+                ...(role === 'ADMIN' ? {} : { authorId: userId }),
             },
             select: {
                 id: true,

@@ -47,11 +47,13 @@ class AnswerController {
             const { questionId } = req.params as { questionId: string };
             const cursor = req.query.cursor as string | null;
             const userId = req.user ? req.user.sub : null;
+            const role = req.user ? req.user.role : null;
 
             const data = await this.answerService.getAnswersByQuestionId(
                 questionId,
                 cursor,
                 userId,
+                role,
             );
 
             res.json({
@@ -78,11 +80,13 @@ class AnswerController {
             const { answerId } = req.params as { answerId: string };
             const { questionId } = req.params as { questionId: string };
             const userId = req.user.sub;
+            const role = req.user.role;
 
             await this.answerService.deleteAnswerById(
                 answerId,
                 questionId,
                 userId,
+                role,
             );
             res.status(204).send();
         } catch (error: any) {

@@ -1,8 +1,5 @@
-import { Prisma } from '@prisma/client';
-
 export type CreateReplyNotificationParams =
     | {
-          tx: Prisma.TransactionClient;
           recipientId: string;
           actorId: string;
 
@@ -13,7 +10,6 @@ export type CreateReplyNotificationParams =
           replyId: string;
       }
     | {
-          tx: Prisma.TransactionClient;
           recipientId: string;
           actorId: string;
 
@@ -24,7 +20,6 @@ export type CreateReplyNotificationParams =
           replyId: string;
       }
     | {
-          tx: Prisma.TransactionClient;
           recipientId: string;
           actorId: string;
 
@@ -35,7 +30,6 @@ export type CreateReplyNotificationParams =
           replyId: string;
       }
     | {
-          tx: Prisma.TransactionClient;
           recipientId: string;
           actorId: string;
 
@@ -44,4 +38,42 @@ export type CreateReplyNotificationParams =
           questionId: string;
           parentReplyId: string;
           replyId: string;
+      };
+
+export type CreateCommentNotificationParams =
+    | {
+          recipientId: string;
+          actorId: string;
+
+          type: 'COMMENT';
+
+          postId: string;
+          commentId: string;
+      }
+    | {
+          recipientId: string;
+          actorId: string;
+
+          type: 'ANSWER';
+
+          questionId: string;
+          answerId: string;
+      };
+
+export type CreatePostOrQuestionLikeNotificationParams =
+    | {
+          recipientId: string;
+          actorId: string;
+
+          type: 'POST_LIKE';
+
+          postId: string;
+      }
+    | {
+          recipientId: string;
+          actorId: string;
+
+          type: 'QUESTION_LIKE';
+
+          questionId: string;
       };

@@ -20,6 +20,7 @@ router.post(
 
 router.get(
     '/:postId/comments',
+    commentRateLimiter.preAuthLimiter,
     optionalAuth,
     commentRateLimiter.getCommentsByPostId,
     commentValidation.validateGetCommentsByPostId,

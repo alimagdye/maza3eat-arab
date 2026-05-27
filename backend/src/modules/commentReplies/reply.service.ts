@@ -1,11 +1,18 @@
 import { prisma } from '../../lib/client.js';
 import replyUtils from './reply.utils.js';
-import notificationService from '../notifications/notification.service.js';
+import NotificationService from '../notifications/notification.service.js';
 
 class ReplyService {
-    private MAX_DEPTH = 10;
+    private MAX_DEPTH = 20;
+    private notificationService = NotificationService;
     async replyToComment(commentId: string, userId: string, content: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`
+                SELECT id FROM "Comment"
+                WHERE id = ${commentId}
+                FOR UPDATE
+            `;
+
             const comment = await tx.comment.findUnique({
                 where: { id: commentId },
                 select: {
@@ -85,25 +92,32 @@ class ReplyService {
                 },
             });
 
-            await notificationService.createReplyNotification({
-                tx,
-                recipientId: comment.authorId,
-                actorId: userId,
-
-                postId: comment.postId,
-                commentId: comment.id,
-                replyId: reply.id,
-                type: 'COMMENT_REPLY',
-            });
-
-            return reply;
+            return { reply, comment };
         });
+
+        await this.notificationService.createReplyNotification({
+            recipientId: result.comment.authorId,
+            actorId: userId,
+
+            postId: result.comment.postId,
+            commentId: result.comment.id,
+            replyId: result.reply.id,
+            type: 'COMMENT_REPLY',
+        });
+
+        return result.reply;
     }
 
     async replyToReply(replyId: string, userId: string, content: string) {
         const MAX_DEPTH = this.MAX_DEPTH;
 
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`
+                SELECT id FROM "Reply"
+                WHERE id = ${replyId}
+                FOR UPDATE
+            `;
+
             const parent = await tx.reply.findUnique({
                 where: { id: replyId },
                 select: {
@@ -201,22 +215,23 @@ class ReplyService {
                 },
             });
 
-            await notificationService.createReplyNotification({
-                tx,
-                recipientId: parent.authorId,
-                actorId: userId,
-
-                postId: parent.comment.postId,
-                parentReplyId: parent.id,
-                replyId: reply.id,
-                type: 'COMMENT_REPLY_REPLY',
-            });
-
-            return reply;
+            return { reply, parent };
         });
+
+        await this.notificationService.createReplyNotification({
+            recipientId: result.parent.authorId,
+            actorId: userId,
+
+            postId: result.parent.comment.postId,
+            parentReplyId: result.parent.id,
+            replyId: result.reply.id,
+            type: 'COMMENT_REPLY_REPLY',
+        });
+
+        return result.reply;
     }
 
-    async deleteReply(replyId: string, userId: string) {
+    async deleteReply(replyId: string, userId: string, role: 'USER' | 'ADMIN') {
         return await prisma.$transaction(async (tx) => {
             const reply = await tx.reply.findUnique({
                 where: { id: replyId },
@@ -237,7 +252,7 @@ class ReplyService {
                 throw new Error('REPLY_NOT_FOUND');
             }
 
-            if (reply.authorId !== userId) {
+            if (reply.authorId !== userId && role !== 'ADMIN') {
                 throw new Error('FORBIDDEN');
             }
 
@@ -278,14 +293,13 @@ class ReplyService {
         cursor: string | null = null,
         userId: string | null = null,
         excludeReplyId: string | null = null,
+        role: 'USER' | 'ADMIN' | null = null,
     ) {
-        const pageSize = 10;
+        const pageSize = 5;
 
         const comment = await prisma.comment.findUnique({
             where: { id: commentId },
-            select: {
-                id: true,
-            },
+            select: { id: true },
         });
 
         if (!comment) {
@@ -301,7 +315,7 @@ class ReplyService {
                 }),
             },
 
-            take: pageSize,
+            take: pageSize + 1,
 
             ...(cursor && {
                 skip: 1,
@@ -318,6 +332,7 @@ class ReplyService {
                         avatar: true,
                         tier: {
                             select: {
+                                id: true,
                                 name: true,
                                 badgeColor: true,
                             },
@@ -327,9 +342,7 @@ class ReplyService {
 
                 replies: {
                     take: 1,
-                    select: {
-                        id: true,
-                    },
+                    select: { id: true },
                 },
 
                 ...(userId && {
@@ -341,13 +354,18 @@ class ReplyService {
             },
         });
 
+        const hasMore = replies.length > pageSize;
+
+        if (hasMore) replies.pop();
+
         const result = replies.map((reply) => {
             const likedByMe =
                 userId && reply.likes ? reply.likes.length > 0 : false;
+            const isOwner = !!userId && reply.authorId === userId;
+
             return {
                 id: reply.id,
                 commentId: reply.commentId,
-                authorId: reply.authorId,
                 content: reply.content,
                 likesCount: reply.likesCount,
                 depth: reply.depth,
@@ -361,16 +379,19 @@ class ReplyService {
                 },
                 hasReplies: reply.replies.length > 0,
                 likedByMe,
+                permissions: {
+                    canDelete: isOwner || role === 'ADMIN',
+                    canReport: !isOwner,
+                },
             };
         });
 
-        const nextCursor =
-            replies.length === pageSize ? replies[replies.length - 1].id : null;
+        const nextCursor = hasMore ? replies[replies.length - 1].id : null;
 
         return {
             replies: result,
             nextCursor,
-            hasMore: replies.length === pageSize,
+            hasMore,
         };
     }
 
@@ -379,13 +400,47 @@ class ReplyService {
         cursor: string | null = null,
         userId: string | null = null,
         excludeReplyId: string | null = null,
+        role: 'USER' | 'ADMIN' | null = null,
     ) {
-        const pageSize = 10;
+        const pageSize = 5;
 
         // check parent exists
         const parent = await prisma.reply.findUnique({
             where: { id: replyId },
-            select: { id: true },
+            select: {
+                id: true,
+                commentId: true,
+                content: true,
+                likesCount: true,
+                depth: true,
+                path: true,
+                createdAt: true,
+                author: {
+                    select: {
+                        id: true,
+                        name: true,
+                        avatar: true,
+                        tier: {
+                            select: {
+                                id: true,
+                                name: true,
+                                badgeColor: true,
+                            },
+                        },
+                    },
+                },
+                comment: {
+                    select: {
+                        postId: true,
+                    },
+                },
+                ...(userId && {
+                    likes: {
+                        where: { userId },
+                        select: { userId: true },
+                    },
+                }),
+            },
         });
 
         if (!parent) {
@@ -400,7 +455,7 @@ class ReplyService {
                 }),
             },
 
-            take: pageSize,
+            take: pageSize + 1,
 
             ...(cursor && {
                 skip: 1,
@@ -417,6 +472,7 @@ class ReplyService {
                         avatar: true,
                         tier: {
                             select: {
+                                id: true,
                                 name: true,
                                 badgeColor: true,
                             },
@@ -440,17 +496,18 @@ class ReplyService {
             },
         });
 
-        const nextCursor =
-            replies.length === pageSize ? replies[replies.length - 1].id : null;
+        const hasMore = replies.length > pageSize;
+
+        if (hasMore) replies.pop();
 
         const result = replies.map((reply) => {
             const likedByMe =
                 userId && reply.likes ? reply.likes.length > 0 : false;
+            const isOwner = !!userId && reply.authorId === userId;
 
             return {
                 id: reply.id,
                 commentId: reply.commentId,
-                authorId: reply.authorId,
                 content: reply.content,
                 likesCount: reply.likesCount,
                 depth: reply.depth,
@@ -464,13 +521,35 @@ class ReplyService {
                 },
                 hasReplies: reply.replies.length > 0,
                 likedByMe,
+                permissions: {
+                    canDelete: isOwner || role === 'ADMIN',
+                    canReport: !isOwner,
+                },
             };
         });
 
+        const nextCursor = hasMore ? replies[replies.length - 1].id : null;
+        const isParentOwner = !!userId && parent.author.id === userId;
         return {
+            postId: parent.comment.postId,
+            parentReply: {
+                id: parent.id,
+                content: parent.content,
+                likesCount: parent.likesCount,
+                depth: parent.depth,
+                path: parent.path,
+                createdAt: parent.createdAt,
+                author: parent.author,
+                likedByMe:
+                    userId && parent.likes ? parent.likes.length > 0 : false,
+                permissions: {
+                    canDelete: isParentOwner || role === 'ADMIN',
+                    canReport: !isParentOwner,
+                },
+            },
             replies: result,
             nextCursor,
-            hasMore: replies.length === pageSize,
+            hasMore,
         };
     }
 }

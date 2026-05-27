@@ -79,9 +79,10 @@ class ReplyController {
     deleteReply = async (req: Request, res: Response) => {
         const { replyId } = req.params as { replyId: string };
         const userId = req.user.sub;
+        const role = req.user.role;
 
         try {
-            await this.replyService.deleteReply(replyId, userId);
+            await this.replyService.deleteReply(replyId, userId, role);
 
             res.status(200).json({
                 status: 'success',
@@ -115,6 +116,7 @@ class ReplyController {
         const cursor = (req.query.cursor as string) || null;
         const userId = req.user ? req.user.sub : null;
         const excludeReplyId = (req.query.excludeReplyId as string) || null;
+        const role = req.user ? req.user.role : null;
 
         try {
             const result = await this.replyService.getRepliesByCommentId(
@@ -122,6 +124,7 @@ class ReplyController {
                 cursor,
                 userId,
                 excludeReplyId,
+                role,
             );
 
             res.json({
@@ -150,6 +153,7 @@ class ReplyController {
         const cursor = (req.query.cursor as string) || null;
         const userId = req.user ? req.user.sub : null;
         const excludeReplyId = (req.query.excludeReplyId as string) || null;
+        const role = req.user ? req.user.role : null;
 
         try {
             const result = await this.replyService.getRepliesByReplyId(
@@ -157,6 +161,7 @@ class ReplyController {
                 cursor,
                 userId,
                 excludeReplyId,
+                role,
             );
 
             res.json({

@@ -9,6 +9,7 @@ const router = Router();
 
 router.post(
     '/questions/:questionId/like',
+    likeRateLimiter.preAuthLimiter,
     requireAuth,
     likeRateLimiter.likeOrUnlikeQuestionLimiter,
     likeValidation.validateLikeOrUnlikeQuestion,
@@ -18,6 +19,7 @@ router.post(
 
 router.delete(
     '/questions/:questionId/like',
+    likeRateLimiter.preAuthLimiter,
     requireAuth,
     likeRateLimiter.likeOrUnlikeQuestionLimiter,
     likeValidation.validateLikeOrUnlikeQuestion,
@@ -27,6 +29,7 @@ router.delete(
 
 router.post(
     '/answers/:answerId/vote',
+    likeRateLimiter.preAuthLimiter,
     requireAuth,
     likeRateLimiter.voteOrUnVoteAnswerLimiter,
     likeValidation.validateVoteOrUnVoteAnswer,
@@ -36,6 +39,7 @@ router.post(
 
 router.post(
     '/answer-replies/:replyId/like',
+    likeRateLimiter.preAuthLimiter,
     requireAuth,
     likeRateLimiter.likeOrUnlikeReplyLimiter,
     likeValidation.validateLikeOrUnlikeReply,
@@ -45,6 +49,7 @@ router.post(
 
 router.delete(
     '/answer-replies/:replyId/like',
+    likeRateLimiter.preAuthLimiter,
     requireAuth,
     likeRateLimiter.likeOrUnlikeReplyLimiter,
     likeValidation.validateLikeOrUnlikeReply,

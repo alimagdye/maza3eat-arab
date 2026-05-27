@@ -1,72 +1,45 @@
-import { Request, Response } from 'express';
+import { Request, Response, CookieOptions } from 'express';
 import AuthService from './auth.service.js';
-import { prisma } from '../../lib/client.js';
-import jwt from 'jsonwebtoken';
 
 class AuthController {
     private authService = AuthService;
 
-    me = async (req: Request, res: Response) => {
-        try {
-            const token = req.cookies.accessToken;
+    // Define class properties
+    private readonly isProduction: boolean;
+    private readonly accessTokenMaxAge: number;
+    private readonly refreshTokenMaxAge: number;
+    private readonly baseCookieOptions: CookieOptions;
 
-            if (!token) {
-                return res.status(401).json({
-                    status: 'fail',
-                    message: 'No access token',
-                });
-            }
+    constructor() {
+        this.isProduction = process.env.NODE_ENV === 'production';
 
-            // Verify and decode the token
-            const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-            const userId = decoded.sub;
+        const accessStr = process.env.ACCESS_TOKEN_MAX_AGE;
+        const refreshStr = process.env.REFRESH_TOKEN_MAX_AGE;
 
-            // Fetch full user data from database
-            const user = await prisma.user.findUnique({
-                where: { id: userId },
-                select: {
-                    id: true,
-                    email: true,
-                    name: true,
-                    avatar: true,
-                    role: true,
-                    tier: {
-                        select: {
-                            name: true,
-                            description: true,
-                            badgeColor: true,
-                        },
-                    },
-                },
-            });
-
-            if (!user) {
-                return res.status(404).json({
-                    status: 'fail',
-                    message: 'User not found',
-                });
-            }
-
-            return res.status(200).json({
-                status: 'success',
-                data: user,
-            });
-        } catch (error: any) {
-            console.error('[AUTH] Error in /me endpoint:', error);
-
-            if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-                return res.status(401).json({
-                    status: 'fail',
-                    message: 'Invalid or expired token',
-                });
-            }
-
-            return res.status(500).json({
-                status: 'error',
-                message: 'Internal server error',
-            });
+        // Fail fast if missing or invalid
+        if (!accessStr || isNaN(Number(accessStr))) {
+            throw new Error(
+                'FATAL: ACCESS_TOKEN_MAX_AGE must be a valid number in env.',
+            );
         }
-    };
+        if (!refreshStr || isNaN(Number(refreshStr))) {
+            throw new Error(
+                'FATAL: REFRESH_TOKEN_MAX_AGE must be a valid number in env.',
+            );
+        }
+
+        // Pre-calculate max ages in milliseconds
+        this.accessTokenMaxAge = Number(accessStr) * 1000;
+        this.refreshTokenMaxAge = Number(refreshStr) * 1000;
+
+        // Define base cookie options once
+        this.baseCookieOptions = {
+            httpOnly: true,
+            secure: this.isProduction,
+            sameSite: this.isProduction ? 'none' : 'lax',
+            path: '/',
+        };
+    }
 
     logout = async (req: Request, res: Response) => {
         const refreshToken = req.cookies?.refreshToken;
@@ -79,18 +52,11 @@ class AuthController {
             console.error('Logout error:', error);
         }
 
-        const cookieOptions = {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        } as const;
+        // Reuse the base options
+        res.clearCookie('accessToken', this.baseCookieOptions);
+        res.clearCookie('refreshToken', this.baseCookieOptions);
 
-        res.clearCookie('accessToken', cookieOptions);
-        res.clearCookie('refreshToken', cookieOptions);
-
-        return res.status(200).json({
-            status: 'success',
-        });
+        return res.status(200).json({ status: 'success' });
     };
 
     refresh = async (req: Request, res: Response) => {
@@ -107,25 +73,18 @@ class AuthController {
             const tokens =
                 await this.authService.rotateRefreshToken(refreshToken);
 
+            // Spread the base options and add the specific maxAge
             res.cookie('accessToken', tokens.data.accessToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite:
-                    process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-                maxAge: Number(process.env.ACCESS_TOKEN_MAX_AGE) * 1000,
+                ...this.baseCookieOptions,
+                maxAge: this.accessTokenMaxAge,
             });
 
             res.cookie('refreshToken', tokens.data.refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite:
-                    process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-                maxAge: Number(process.env.REFRESH_TOKEN_MAX_AGE) * 1000,
+                ...this.baseCookieOptions,
+                maxAge: this.refreshTokenMaxAge,
             });
 
-            return res.status(200).json({
-                status: 'success',
-            });
+            return res.status(200).json({ status: 'success' });
         } catch (error: any) {
             console.error('Refresh error:', error);
 
@@ -136,6 +95,9 @@ class AuthController {
                 error.message === 'INVALID_TOKEN_TYPE' ||
                 error.message === 'UNAUTHORIZED'
             ) {
+                res.clearCookie('accessToken', this.baseCookieOptions);
+                res.clearCookie('refreshToken', this.baseCookieOptions);
+
                 return res.status(401).json({
                     status: 'fail',
                     message: error.message,

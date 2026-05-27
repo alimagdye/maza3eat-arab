@@ -6,6 +6,8 @@ import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { prisma } from './lib/client.js';
+import { initSocket } from './sockets/socket.server.js';
+import { getIO } from './sockets/socket.server.js';
 // -----------------------------
 // Initialize
 // -----------------------------
@@ -77,9 +79,9 @@ import answerLikeRoutes from './modules/questionLikes/questionLike.routes.js';
 import adRoutes from './modules/ads/ad.routes.js';
 import userRoutes from './modules/users/user.routes.js';
 import notificationRoutes from './modules/notifications/notification.routes.js';
-// import reportRoutes from "./modules/reports/routes";
-// import contactRoutes from "./modules/contact/routes";
-// import adminRoutes from "./modules/admin/routes";
+import contactRequestRoutes from './modules/contactRequests/contact.routes.js';
+import reportRoutes from './modules/reports/report.routes.js';
+import adminRoutes from './modules/admin/admin.routes.js';
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/posts', postRoutes);
@@ -92,9 +94,9 @@ app.use('/api/v1', answerLikeRoutes);
 app.use('/api/v1/ads', adRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
-// app.use("/api/v1/reports", reportRoutes);
-// app.use("/api/v1/contact-requests", contactRoutes);
-// app.use("/api/v1/admin", adminRoutes);
+app.use('/api/v1/contact-requests', contactRequestRoutes);
+app.use('/api/v1/reports', reportRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // -----------------------------
 // 404 Handler
@@ -130,6 +132,9 @@ async function startServer() {
         await prisma.$connect();
         console.log('✅ Database connected');
 
+        initSocket(server);
+        console.log('✅ WebSocket initialized');
+
         server.listen(PORT, () => {
             console.log(
                 `🚀 Server running on http://localhost:${PORT} (${NODE_ENV})`,
@@ -149,12 +154,18 @@ startServer();
 
 process.on('SIGINT', async () => {
     console.log('🛑 SIGINT received. Shutting down...');
+    try {
+        getIO().close();
+    } catch {}
     await prisma.$disconnect();
     process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
     console.log('🛑 SIGTERM received. Shutting down...');
+    try {
+        getIO().close();
+    } catch {}
     await prisma.$disconnect();
     process.exit(0);
 });

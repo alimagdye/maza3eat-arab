@@ -1,9 +1,10 @@
 import { prisma } from '../../lib/client.js';
 import { normalizeArabic } from '../../utils/normalizeArabic.js';
-import postUtils from './post.utils.js';
+import ImageUtils from '../../utils/image.utils.js';
 import { HomeScope, HomeScopeType, ScopeCacheState } from '../../types/post.js';
 
 class PostService {
+    private imageUtils = ImageUtils;
     private homePostsCache: Record<HomeScopeType, ScopeCacheState> = {
         community: { data: [], expiresAt: 0, refreshPromise: null },
         admin: { data: [], expiresAt: 0, refreshPromise: null },
@@ -23,8 +24,15 @@ class PostService {
             height: number;
             originalName: string;
         }[],
+        role: 'ADMIN' | 'USER' | null = null,
     ) {
-        if (!uploads || uploads.length < 1) {
+        // -------------------------
+        // 1. normalize base inputs
+        // -------------------------
+        const trimmedTitle = title?.trim();
+        const trimmedContent = content?.trim();
+
+        if (!uploads || uploads.length === 0) {
             throw new Error('Post must have at least 1 image');
         }
 
@@ -32,7 +40,7 @@ class PostService {
             throw new Error('Max 6 images');
         }
 
-        if (!tags || tags.length < 1) {
+        if (!tags || tags.length === 0) {
             throw new Error('Post must have at least 1 tag');
         }
 
@@ -40,93 +48,112 @@ class PostService {
             throw new Error('Max 10 tags');
         }
 
-        return prisma.$transaction(async (tx) => {
-            const newPost = await tx.post.create({
+        // optional: validate uploads structure (defensive)
+        for (const img of uploads) {
+            if (!img.url || !img.publicId) {
+                throw new Error('Invalid image data');
+            }
+        }
+
+        // -------------------------
+        // 3. normalize + dedupe tags
+        // -------------------------
+        const tagMap = new Map<string, string>();
+
+        for (const tag of tags) {
+            if (typeof tag !== 'string') {
+                throw new Error('Invalid tag');
+            }
+
+            const trimmed = tag.trim();
+            if (!trimmed) continue;
+
+            if (trimmed.length > 30) {
+                throw new Error('Tag too long (max 30)');
+            }
+
+            const normalized = normalizeArabic(trimmed).toLowerCase();
+
+            // dedupe AFTER normalization
+            if (!tagMap.has(normalized)) {
+                tagMap.set(normalized, trimmed);
+            }
+        }
+
+        const normalizedTags = Array.from(tagMap.keys());
+
+        if (normalizedTags.length === 0) {
+            throw new Error('No valid tags');
+        }
+
+        const titleNormalized = normalizeArabic(trimmedTitle);
+
+        // -------------------------
+        // 4. transaction
+        // -------------------------
+        return await prisma.$transaction(async (tx) => {
+            // ensure global tags exist
+            await tx.tag.createMany({
+                data: normalizedTags.map((n) => ({ normalizedName: n })),
+                skipDuplicates: true,
+            });
+
+            // fetch tag IDs (authoritative state)
+            const tagRecords = await tx.tag.findMany({
+                where: { normalizedName: { in: normalizedTags } },
+                select: { id: true, normalizedName: true },
+            });
+
+            const tagIdMap = new Map(
+                tagRecords.map((t) => [t.normalizedName, t.id]),
+            );
+
+            // create post
+            const post = await tx.post.create({
                 data: {
-                    title,
-                    titleNormalized: normalizeArabic(title),
-                    content,
+                    ...(role === 'ADMIN' ? { status: 'APPROVED' } : {}),
+                    title: trimmedTitle,
+                    titleNormalized,
+                    content: trimmedContent,
                     authorId: userId,
                 },
             });
 
+            // insert images
             await tx.postImage.createMany({
-                data: uploads.map((image) => ({
-                    postId: newPost.id,
-                    imageUrl: image.url,
-                    publicId: image.publicId,
-                    originalName: image.originalName,
-                    width: image.width,
-                    height: image.height,
+                data: uploads.map((img) => ({
+                    postId: post.id,
+                    imageUrl: img.url,
+                    publicId: img.publicId,
+                    originalName: img.originalName,
+                    width: img.width,
+                    height: img.height,
                 })),
             });
 
-            const uniqueOriginalTags = [
-                ...new Set(tags.map((tag) => tag.trim()).filter(Boolean)),
-            ];
+            // build relations safely
+            const relations = normalizedTags.map((n) => {
+                const tagId = tagIdMap.get(n);
 
-            const normalizedList = uniqueOriginalTags.map((tag) =>
-                normalizeArabic(tag),
-            );
-
-            const existing = await tx.tag.findMany({
-                where: {
-                    normalizedName: {
-                        in: normalizedList,
-                    },
-                },
-                select: {
-                    id: true,
-                    normalizedName: true,
-                },
-            });
-
-            const tagIdByNormalized = new Map(
-                existing.map((tag) => [tag.normalizedName, tag.id]),
-            );
-
-            const missing = normalizedList
-                .filter((n) => !tagIdByNormalized.has(n))
-                .map((n) => ({
-                    normalizedName: n,
-                }));
-
-            if (missing.length > 0) {
-                await tx.tag.createMany({
-                    data: missing,
-                    skipDuplicates: true,
-                });
-
-                const created = await tx.tag.findMany({
-                    where: {
-                        normalizedName: {
-                            in: missing.map((m) => m.normalizedName),
-                        },
-                    },
-                    select: {
-                        id: true,
-                        normalizedName: true,
-                    },
-                });
-
-                for (const tag of created) {
-                    tagIdByNormalized.set(tag.normalizedName, tag.id);
+                if (tagId === undefined) {
+                    throw new Error(
+                        `Invariant failed: missing tagId for "${n}"`,
+                    );
                 }
-            }
 
-            await tx.postTag.createMany({
-                data: uniqueOriginalTags.map((original) => {
-                    const normalized = normalizeArabic(original);
-
-                    return {
-                        postId: newPost.id,
-                        tagId: tagIdByNormalized.get(normalized)!,
-                        name: original,
-                    };
-                }),
+                return {
+                    postId: post.id,
+                    tagId,
+                    name: tagMap.get(n)!,
+                };
             });
 
-            return newPost;
+            // bulk insert post tags
+            await tx.postTag.createMany({
+                data: relations,
+            });
+
+            return post;
         });
     }
 
@@ -135,13 +162,14 @@ class PostService {
         sort: string,
         cursor: string | null = null,
         search: string = '',
+        status: string = 'APPROVED',
     ) {
         const take = 10;
 
         const role = scope === 'community' ? 'USER' : 'ADMIN';
 
         const where: any = {
-            status: 'APPROVED',
+            status: status.toUpperCase(),
             author: { role },
         };
 
@@ -270,17 +298,19 @@ class PostService {
         };
     }
 
-    async getPostById(postId: string, userId: string | null) {
+    async getPostById(
+        postId: string,
+        userId: string | null = null,
+        role: 'ADMIN' | 'USER' | null = null,
+    ) {
         const post = await prisma.post.findFirst({
             where: {
                 id: postId,
-                OR: [
-                    { status: 'APPROVED' },
-                    // Allow post owner to see their own posts regardless of status
-                    ...(userId ? [{ authorId: userId }] : []),
-                ],
+                ...(role === 'ADMIN' ? {} : { status: 'APPROVED' }),
             },
             select: {
+                id: true,
+                status: true,
                 title: true,
                 content: true,
                 createdAt: true,
@@ -326,6 +356,8 @@ class PostService {
         }
         const likedByMe = userId && post.likes ? post.likes.length > 0 : false;
         return {
+            id: post.id,
+            ...(role === 'ADMIN' && { status: post.status }),
             title: post?.title,
             content: post?.content,
             publishDate: post?.createdAt,
@@ -344,11 +376,15 @@ class PostService {
         };
     }
 
-    async deletePostById(postId: string, userId: string) {
+    async deletePostById(
+        postId: string,
+        userId: string,
+        role: 'ADMIN' | 'USER' | null = null,
+    ) {
         const post = await prisma.post.findFirst({
             where: {
                 id: postId,
-                authorId: userId,
+                ...(role === 'ADMIN' ? {} : { authorId: userId }),
             },
             select: {
                 id: true,
@@ -375,7 +411,7 @@ class PostService {
         const tagIds = post.tags.map((tag) => tag.tagId);
 
         if (publicIds.length > 0) {
-            await postUtils.deleteImages(publicIds);
+            await this.imageUtils.deleteImages(publicIds);
         }
 
         await prisma.$transaction(async (tx) => {

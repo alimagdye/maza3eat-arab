@@ -40,6 +40,7 @@ router.delete(
 
 router.get(
     '/answers/:answerId/replies',
+    replyRateLimiter.preAuthLimiter,
     optionalAuth,
     replyRateLimiter.getMoreRepliesLimiter,
     replyValidation.validateGetRepliesByAnswerId,
@@ -49,6 +50,7 @@ router.get(
 
 router.get(
     '/answer-replies/:replyId/replies',
+    replyRateLimiter.preAuthLimiter,
     optionalAuth,
     replyRateLimiter.getMoreRepliesLimiter,
     replyValidation.validateGetRepliesByReplyId,

@@ -7,6 +7,7 @@ class QuestionController {
     createQuestion = async (req: Request, res: Response) => {
         const { title, content, tags } = req.body;
         const userId = req.user.sub;
+        const role = req.user.role;
 
         try {
             const question = await this.questionService.createQuestion(
@@ -14,6 +15,7 @@ class QuestionController {
                 content,
                 tags,
                 userId,
+                role,
             );
             return res.status(201).json({
                 status: 'success',
@@ -88,9 +90,14 @@ class QuestionController {
     deleteQuestionById = async (req: Request, res: Response) => {
         const { questionId } = req.params as { questionId: string };
         const userId = req.user.sub;
+        const role = req.user.role;
 
         try {
-            await this.questionService.deleteQuestionById(questionId, userId);
+            await this.questionService.deleteQuestionById(
+                questionId,
+                userId,
+                role,
+            );
 
             return res.status(200).json({
                 status: 'success',

@@ -1,8 +1,11 @@
-import { createLimiter } from '../../middlewares/rateLimit/rateLimiter.factory.js';
+import {
+    createIPLimiter,
+    createLimiter,
+} from '../../middlewares/rateLimit/rateLimiter.factory.js';
 
 const notificationRateLimiter = {
-    preAuthLimiter: createLimiter(
-        120,
+    preAuthLimiter: createIPLimiter(
+        150,
         'Too many requests. Please try again later.',
     ),
     notificationLimiter: createLimiter(

@@ -8,8 +8,10 @@ class UserService {
                 id: true,
                 name: true,
                 avatar: true,
+                role: true,
                 tier: {
                     select: {
+                        id: true,
                         name: true,
                         badgeColor: true,
                         description: true,
@@ -34,6 +36,7 @@ class UserService {
             id: user.id,
             name: user.name,
             avatar: user.avatar,
+            ...(isOwner && { role: user.role }),
             tier: user.tier,
             counts: {
                 posts: user._count.posts,

@@ -24,6 +24,7 @@ router.get('/home', questionController.getHomeQuestions);
 
 router.get(
     '/',
+    questionRateLimiter.preAuthLimiter,
     optionalAuth,
     questionRateLimiter.getQuestionsLimiter,
     questionValidation.validateGetQuestions,
@@ -40,6 +41,7 @@ router.get(
 
 router.get(
     '/:questionId',
+    questionRateLimiter.preAuthLimiter,
     optionalAuth,
     questionRateLimiter.getQuestionByIdLimiter,
     questionValidation.validateQuestionId,

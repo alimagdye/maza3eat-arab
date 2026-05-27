@@ -5,7 +5,7 @@ import {
 
 export default {
     preAuthLimiter: createIPLimiter(
-        40,
+        350,
         'Too many requests from this IP. Please try again later.',
     ),
     replyToAnswerLimiter: createLimiter(

@@ -1,53 +1,23 @@
-import { CreateReplyNotificationParams } from '../../types/notification.js';
 import { prisma } from '../../lib/client.js';
-class NotificationService {
-    async createReplyNotification(params: CreateReplyNotificationParams) {
-        const { tx, recipientId, actorId, type, replyId } = params;
-        if (recipientId === actorId) return;
-        const data: any = {
-            type,
-            recipientId,
-            lastActorId: actorId,
-        };
-        if (type === 'ANSWER_REPLY') {
-            data.answerReply = {
-                create: {
-                    questionId: params.questionId,
-                    answerId: params.answerId,
-                    replyId,
-                },
-            };
-        }
-        if (type === 'COMMENT_REPLY') {
-            data.commentReply = {
-                create: {
-                    postId: params.postId,
-                    commentId: params.commentId,
-                    replyId,
-                },
-            };
-        }
-        if (type === 'COMMENT_REPLY_REPLY') {
-            data.commentReplyReply = {
-                create: {
-                    postId: params.postId,
-                    parentReplyId: params.parentReplyId,
-                    replyId,
-                },
-            };
-        }
-        if (type === 'ANSWER_REPLY_REPLY') {
-            data.answerReplyReply = {
-                create: {
-                    questionId: params.questionId,
-                    parentReplyId: params.parentReplyId,
-                    replyId,
-                },
-            };
-        }
+import notificationReader from './notification.reader.js';
+import notificationWriter from './notification.writer.js';
+import notificationCount from './notification.count.js';
 
-        await tx.notification.create({ data });
-    }
+class NotificationService {
+    // Writers
+    createReplyNotification =
+        notificationWriter.createReplyNotification.bind(notificationWriter);
+    createCommentOrAnswerNotification =
+        notificationWriter.createCommentOrAnswerNotification.bind(
+            notificationWriter,
+        );
+    createPostOrQuestionLikeNotification =
+        notificationWriter.createPostOrQuestionLikeNotification.bind(
+            notificationWriter,
+        );
+    // counter
+    getUnreadNotificationCount =
+        notificationCount.getUnreadNotificationCount.bind(notificationCount);
 
     async getNotifications(userId: string, cursor: string | null) {
         const take = 10;
@@ -61,14 +31,13 @@ class NotificationService {
                 skip: 1,
                 cursor: { id: cursor },
             }),
-            orderBy: {
-                createdAt: 'desc',
-            },
+            orderBy: [{ lastActivityAt: 'desc' }, { id: 'desc' }],
             select: {
                 id: true,
                 type: true,
                 isRead: true,
-                createdAt: true,
+                lastActivityAt: true,
+                numberOfActors: true,
 
                 lastActor: {
                     select: {
@@ -112,334 +81,37 @@ class NotificationService {
 
         switch (notification.type) {
             case 'ANSWER_REPLY':
-                return this.getAnswerReplyNotification(notificationId);
-
+                return notificationReader.getAnswerReplyNotification(
+                    notificationId,
+                );
             case 'COMMENT_REPLY':
-                return this.getCommentReplyNotification(notificationId);
+                return notificationReader.getCommentReplyNotification(
+                    notificationId,
+                );
             case 'ANSWER_REPLY_REPLY':
-                return this.getAnswerReplyReplyNotification(notificationId);
+                return notificationReader.getAnswerReplyReplyNotification(
+                    notificationId,
+                );
             case 'COMMENT_REPLY_REPLY':
-                return this.getCommentReplyReplyNotification(notificationId);
+                return notificationReader.getCommentReplyReplyNotification(
+                    notificationId,
+                );
+            case 'COMMENT':
+                return notificationReader.getCommentNotification(
+                    notificationId,
+                );
+            case 'ANSWER':
+                return notificationReader.getAnswerNotification(notificationId);
+            case 'POST_LIKE':
+                return notificationReader.getPostLikeNotification(
+                    notificationId,
+                );
+            case 'QUESTION_LIKE':
+                return notificationReader.getQuestionLikeNotification(
+                    notificationId,
+                );
             default:
                 return null;
-        }
-    }
-
-    async getAnswerReplyNotification(notificationId: string) {
-        const notification = await prisma.notification.findUnique({
-            where: {
-                id: notificationId,
-            },
-            select: {
-                id: true,
-                type: true,
-                isRead: true,
-                createdAt: true,
-                answerReply: {
-                    select: {
-                        questionId: true,
-                        answer: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                totalVoteValue: true,
-                                repliesCount: true,
-                            },
-                        },
-                        reply: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                likesCount: true,
-                                depth: true,
-                                path: true,
-                            },
-                        },
-                    },
-                },
-            },
-        });
-        if (notification?.answerReply) {
-            return {
-                notification: {
-                    id: notification.id,
-                    type: notification.type,
-                    isRead: notification.isRead,
-                    createdAt: notification.createdAt,
-                    questionId: notification.answerReply.questionId,
-                    answer: notification.answerReply.answer,
-                    reply: notification.answerReply.reply,
-                },
-            };
-        } else {
-            return null;
-        }
-    }
-
-    async getCommentReplyNotification(notificationId: string) {
-        const notification = await prisma.notification.findUnique({
-            where: {
-                id: notificationId,
-            },
-            select: {
-                id: true,
-                type: true,
-                isRead: true,
-                createdAt: true,
-                commentReply: {
-                    select: {
-                        postId: true,
-                        comment: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                likesCount: true,
-                                repliesCount: true,
-                            },
-                        },
-                        reply: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                likesCount: true,
-                                depth: true,
-                                path: true,
-                            },
-                        },
-                    },
-                },
-            },
-        });
-        if (notification?.commentReply) {
-            return {
-                notification: {
-                    id: notification.id,
-                    type: notification.type,
-                    isRead: notification.isRead,
-                    createdAt: notification.createdAt,
-                    postId: notification.commentReply.postId,
-                    comment: notification.commentReply.comment,
-                    reply: notification.commentReply.reply,
-                },
-            };
-        } else {
-            return null;
-        }
-    }
-
-    async getAnswerReplyReplyNotification(notificationId: string) {
-        const notification = await prisma.notification.findUnique({
-            where: {
-                id: notificationId,
-            },
-            select: {
-                id: true,
-                type: true,
-                isRead: true,
-                createdAt: true,
-                answerReplyReply: {
-                    select: {
-                        questionId: true,
-                        parentReply: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                likesCount: true,
-                                depth: true,
-                                path: true,
-                            },
-                        },
-                        reply: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                likesCount: true,
-                                depth: true,
-                                path: true,
-                            },
-                        },
-                    },
-                },
-            },
-        });
-        if (notification?.answerReplyReply) {
-            return {
-                notification: {
-                    id: notification.id,
-                    type: notification.type,
-                    isRead: notification.isRead,
-                    createdAt: notification.createdAt,
-                    questionId: notification.answerReplyReply.questionId,
-                    parentReply: notification.answerReplyReply.parentReply,
-                    reply: notification.answerReplyReply.reply,
-                },
-            };
-        } else {
-            return null;
-        }
-    }
-
-    async getCommentReplyReplyNotification(notificationId: string) {
-        const notification = await prisma.notification.findUnique({
-            where: {
-                id: notificationId,
-            },
-            select: {
-                id: true,
-                type: true,
-                isRead: true,
-                createdAt: true,
-                commentReplyReply: {
-                    select: {
-                        postId: true,
-                        parentReply: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                likesCount: true,
-                                depth: true,
-                                path: true,
-                            },
-                        },
-                        reply: {
-                            select: {
-                                id: true,
-                                content: true,
-                                author: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        avatar: true,
-                                        tier: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                badgeColor: true,
-                                            },
-                                        },
-                                    },
-                                },
-                                likesCount: true,
-                                depth: true,
-                                path: true,
-                            },
-                        },
-                    },
-                },
-            },
-        });
-        if (notification?.commentReplyReply) {
-            return {
-                notification: {
-                    id: notification.id,
-                    type: notification.type,
-                    isRead: notification.isRead,
-                    createdAt: notification.createdAt,
-                    postId: notification.commentReplyReply.postId,
-                    parentReply: notification.commentReplyReply.parentReply,
-                    reply: notification.commentReplyReply.reply,
-                },
-            };
-        } else {
-            return null;
         }
     }
 }

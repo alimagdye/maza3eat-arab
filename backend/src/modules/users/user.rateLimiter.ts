@@ -2,7 +2,7 @@ import { createLimiter } from '../../middlewares/rateLimit/rateLimiter.factory.j
 
 const userRateLimiter = {
     preAuthLimiter: createLimiter(
-        120,
+        350,
         'Too many requests. Please try again later.',
     ),
     meLimiter: createLimiter(100, 'Too many requests. Please try again later.'),

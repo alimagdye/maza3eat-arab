@@ -5,7 +5,7 @@ import {
 
 const commentRateLimiter = {
     preAuthLimiter: createIPLimiter(
-        60,
+        350,
         'Too many requests from this IP, please try again later.',
     ),
     createCommentLimiter: createLimiter(

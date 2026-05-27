@@ -1,11 +1,13 @@
 import { prisma } from '../../lib/client.js';
+import NotificationService from '../notifications/notification.service.js';
 
 class CommentService {
+    private notificationService = NotificationService;
     async createComment(postId: string, userId: string, content: string) {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const post = await tx.post.findUnique({
                 where: { id: postId },
-                select: { id: true, status: true },
+                select: { id: true, status: true, authorId: true },
             });
 
             if (!post || post.status !== 'APPROVED') {
@@ -44,32 +46,41 @@ class CommentService {
                 },
             });
 
-            return comment;
+            return { comment, post };
         });
+        await this.notificationService.createCommentOrAnswerNotification({
+            recipientId: result.post.authorId,
+            actorId: userId,
+            postId,
+            commentId: result.comment.id,
+            type: 'COMMENT',
+        });
+        return result.comment;
     }
 
     async getCommentsByPostId(
         postId: string,
         cursor: string | null = null,
         userId: string | null = null,
+        role: 'USER' | 'ADMIN' | null = null,
     ) {
-        const pageSize = 5;
+        const pageSize = 10;
 
         const post = await prisma.post.findFirst({
             where: {
                 id: postId,
-                status: 'APPROVED',
             },
+            select: { status: true },
         });
 
-        if (!post) {
+        if (!post || post.status !== 'APPROVED') {
             throw new Error('POST_NOT_FOUND');
         }
 
         const comments = await prisma.comment.findMany({
             where: { postId },
 
-            take: pageSize,
+            take: pageSize + 1,
 
             ...(cursor && {
                 skip: 1,
@@ -86,6 +97,7 @@ class CommentService {
                         avatar: true,
                         tier: {
                             select: {
+                                id: true,
                                 name: true,
                                 badgeColor: true,
                             },
@@ -101,6 +113,9 @@ class CommentService {
             },
         });
 
+        const hasMore = comments.length > pageSize;
+        if (hasMore) comments.pop();
+
         const nextCursor =
             comments.length === pageSize
                 ? comments[comments.length - 1].id
@@ -109,11 +124,11 @@ class CommentService {
         const result = comments.map((comment) => {
             const likedByMe =
                 userId && comment.likes ? comment.likes.length > 0 : false;
+            const isOwner = !!userId && comment.authorId === userId;
 
             return {
                 id: comment.id,
                 postId: comment.postId,
-                authorId: comment.authorId,
                 content: comment.content,
 
                 likesCount: comment.likesCount,
@@ -128,17 +143,26 @@ class CommentService {
                 },
 
                 likedByMe,
+                permissions: {
+                    canDelete: isOwner || role === 'ADMIN',
+                    canReport: !isOwner, // guest can report after sign in, so guest can also see report button
+                },
             };
         });
 
         return {
             comments: result,
             nextCursor,
-            hasMore: comments.length === pageSize,
+            hasMore,
         };
     }
 
-    async deleteCommentById(commentId: string, postId: string, userId: string) {
+    async deleteCommentById(
+        commentId: string,
+        postId: string,
+        userId: string,
+        role: 'USER' | 'ADMIN',
+    ) {
         return await prisma.$transaction(async (tx) => {
             const comment = await tx.comment.findUnique({
                 where: { id: commentId },
@@ -154,7 +178,7 @@ class CommentService {
                 throw new Error('COMMENT_NOT_FOUND');
             }
 
-            if (comment.authorId !== userId) {
+            if (comment.authorId !== userId && role !== 'ADMIN') {
                 throw new Error('UNAUTHORIZED');
             }
 

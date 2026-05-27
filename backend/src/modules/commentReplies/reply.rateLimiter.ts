@@ -2,7 +2,7 @@ import { createLimiter } from '../../middlewares/rateLimit/rateLimiter.factory.j
 
 export default {
     preAuthLimiter: createLimiter(
-        40,
+        350,
         'Too many requests. Please try again later.',
     ),
     replyToCommentLimiter: createLimiter(
