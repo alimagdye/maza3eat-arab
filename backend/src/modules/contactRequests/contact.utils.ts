@@ -8,17 +8,17 @@ class ContactUtils {
     private readonly KEY: Buffer;
 
     constructor() {
-        const keyBase64 = process.env.CONTACT_ENCRYPTION_KEY;
-        if (!keyBase64) {
-            // FATAL: CONTACT_ENCRYPTION_KEY environment variable is missing.
+        const rawKey = process.env.CONTACT_ENCRYPTION_KEY;
+
+        if (!rawKey) {
             throw new Error('MISSING_CONTACT_ENCRYPTION_KEY');
         }
 
-        this.KEY = Buffer.from(keyBase64, 'base64');
+        this.KEY = rawKey.length === 64
+            ? Buffer.from(rawKey, 'hex')
+            : Buffer.from(rawKey, 'base64');
 
-        // AES-256 requires a 32-byte key. Fail fast if it's wrong.
         if (this.KEY.length !== 32) {
-            // FATAL: CONTACT_ENCRYPTION_KEY must be exactly 32 bytes when base64 decoded.
             throw new Error('INVALID_CONTACT_ENCRYPTION_KEY_LENGTH');
         }
     }
