@@ -4,6 +4,7 @@ import adRateLimiter from './ad.rateLimiter.js';
 import adValidation from './ad.validation.js';
 import validate from '../../../middlewares/validateRequest.js';
 import { uploadImages } from '../../../middlewares/uploadImages.js';
+import homeAdRouter from './homeAd.routes.js';
 
 const router = Router();
 
@@ -40,5 +41,7 @@ router.delete(
     validate,
     AdController.deleteAd,
 );
+
+router.use('/home', homeAdRouter);
 
 export default router;
