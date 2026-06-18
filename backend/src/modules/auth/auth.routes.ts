@@ -34,9 +34,4 @@ router.post(
     authController.refresh,
 );
 
-router.get(
-    '/me',
-    authController.me,
-);
-
 export default router;
