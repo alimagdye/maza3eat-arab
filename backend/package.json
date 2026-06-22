@@ -3,7 +3,7 @@
     "author": "Ali Magdy",
     "license": "MIT",
     "version": "1.0.0",
-    "description": "A social media traveling blog platform using Node.js/typescript, Express, and MongoDB.",
+    "description": "A social media traveling blog platform using Node.js/typescript, Express, and PostgreSQL.",
     "keywords": [
         "social media",
         "traveling",
@@ -25,11 +25,10 @@
         "db:setup:prod": "prisma generate && prisma migrate deploy && prisma db seed"
     },
     "prisma": {
-        "seed": "tsx prisma/seed.js"
+        "seed": "node prisma/seed.js"
     },
     "dependencies": {
         "@prisma/client": "^6.19.2",
-        "busboy": "^1.6.0",
         "cloudinary": "^2.9.0",
         "compression": "^1.8.1",
         "cookie": "^1.1.1",
@@ -52,7 +51,6 @@
         "socket.io": "^4.8.3"
     },
     "devDependencies": {
-        "@types/busboy": "^1.5.4",
         "@types/compression": "^1.8.1",
         "@types/cookie-parser": "^1.4.10",
         "@types/cors": "^2.8.19",

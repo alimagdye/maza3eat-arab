@@ -22,12 +22,15 @@ class NotificationController {
 
     getNotificationById = async (req: Request, res: Response) => {
         const userId = req.user.sub as string;
+        const role = req.user.role as 'USER' | 'ADMIN';
+
         const notificationId = req.params.id as string;
         try {
             const notification =
                 await this.notificationService.getNotificationById(
                     userId,
                     notificationId,
+                    role,
                 );
             if (!notification) {
                 return res.status(404).json({

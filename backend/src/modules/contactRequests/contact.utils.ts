@@ -8,15 +8,12 @@ class ContactUtils {
     private readonly KEY: Buffer;
 
     constructor() {
-        const rawKey = process.env.CONTACT_ENCRYPTION_KEY;
-
-        if (!rawKey) {
+        const keyBase64 = process.env.CONTACT_ENCRYPTION_KEY;
+        if (!keyBase64) {
             throw new Error('MISSING_CONTACT_ENCRYPTION_KEY');
         }
 
-        this.KEY = rawKey.length === 64
-            ? Buffer.from(rawKey, 'hex')
-            : Buffer.from(rawKey, 'base64');
+        this.KEY = Buffer.from(keyBase64, 'base64');
 
         if (this.KEY.length !== 32) {
             throw new Error('INVALID_CONTACT_ENCRYPTION_KEY_LENGTH');
