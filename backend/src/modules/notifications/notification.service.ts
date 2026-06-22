@@ -66,7 +66,11 @@ class NotificationService {
         return { notifications, nextCursor, hasMore };
     }
 
-    async getNotificationById(userId: string, notificationId: string) {
+    async getNotificationById(
+        userId: string,
+        notificationId: string,
+        role: 'USER' | 'ADMIN',
+    ) {
         const notification = await prisma.notification.findUnique({
             where: { id: notificationId },
             select: {
@@ -83,18 +87,26 @@ class NotificationService {
             case 'ANSWER_REPLY':
                 return notificationReader.getAnswerReplyNotification(
                     notificationId,
+                    userId,
+                    role,
                 );
             case 'COMMENT_REPLY':
                 return notificationReader.getCommentReplyNotification(
                     notificationId,
+                    userId,
+                    role,
                 );
             case 'ANSWER_REPLY_REPLY':
                 return notificationReader.getAnswerReplyReplyNotification(
                     notificationId,
+                    userId,
+                    role,
                 );
             case 'COMMENT_REPLY_REPLY':
                 return notificationReader.getCommentReplyReplyNotification(
                     notificationId,
+                    userId,
+                    role,
                 );
             case 'COMMENT':
                 return notificationReader.getCommentNotification(
