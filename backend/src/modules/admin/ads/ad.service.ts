@@ -71,19 +71,35 @@ class AdService {
         return ad;
     }
 
-    async getAds(sort: 'expireAt' | 'priority') {
+    async getAds(sort: 'expireAt' | 'priority', cursor: string | null) {
+        const pageSize = 10;
+
         const ads = await prisma.ad.findMany({
+            take: pageSize + 1,
+
+            ...(cursor && {
+                skip: 1,
+                cursor: { id: cursor },
+            }),
             orderBy:
                 sort === 'expireAt'
                     ? [{ expireAt: 'asc' }, { priority: 'desc' }]
                     : [{ priority: 'desc' }, { expireAt: 'asc' }],
         });
 
+        const hasMore = ads.length > pageSize;
+        if (hasMore) ads.pop();
+
+        const nextCursor =
+            ads.length === pageSize ? ads[ads.length - 1].id : null;
+
         const now = new Date();
-        return ads.map((ad) => ({
+        const result = ads.map((ad) => ({
             ...ad,
             isExpired: ad.expireAt < now,
         }));
+
+        return { ads: result, nextCursor, hasMore };
     }
 
     async updateAd(
