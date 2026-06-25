@@ -24,7 +24,8 @@ class TagService {
             FROM "PostTag" pt
             JOIN "Post" p ON p.id = pt."postId"
             JOIN "Tag" t ON t.id = pt."tagId"
-            WHERE p.status = 'APPROVED'
+            JOIN "User" u ON u.id = p."authorId"
+            WHERE p.status = 'APPROVED' AND u.role = 'USER'
             GROUP BY t."normalizedName"
             ORDER BY "postsCount" DESC
             LIMIT $1

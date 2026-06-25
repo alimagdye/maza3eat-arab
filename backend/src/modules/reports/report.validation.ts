@@ -1,4 +1,4 @@
-import { body, param, query, ValidationChain } from 'express-validator';
+import { body, ValidationChain } from 'express-validator';
 
 const reportValidation: {
     validateCreateReport: ValidationChain[];
@@ -10,8 +10,10 @@ const reportValidation: {
             .isIn([
                 'COMMENT',
                 'ANSWER',
-                'REPLY',
+                'COMMENT_REPLY',
                 'ANSWER_REPLY',
+                'ANSWER_REPLY_REPLY',
+                'COMMENT_REPLY_REPLY',
                 'CONTACT_REQUEST',
             ])
             .withMessage('Invalid target type'),

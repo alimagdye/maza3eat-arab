@@ -89,9 +89,10 @@ class AdController {
     getAds = async (req: Request, res: Response) => {
         const sort: 'expireAt' | 'priority' =
             (req.query.sort as 'expireAt' | 'priority') || 'expireAt';
+        const cursor: string | null = req.query.cursor as string | null;
 
         try {
-            const ads = await this.adService.getAds(sort);
+            const ads = await this.adService.getAds(sort, cursor);
             return res.status(200).json({
                 status: 'success',
                 data: ads,
