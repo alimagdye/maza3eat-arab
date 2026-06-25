@@ -1,22 +1,9 @@
+import { create } from 'domain';
 import { prisma } from '../../lib/client.js';
 import socketService from '../../sockets/socket.service.js';
 import notificationCount from './notification.count.js';
 
 class NotificationReader {
-    private author = {
-        select: {
-            id: true,
-            name: true,
-            avatar: true,
-            tier: {
-                select: {
-                    id: true,
-                    name: true,
-                    badgeColor: true,
-                },
-            },
-        },
-    };
     async getAnswerReplyNotification(
         notificationId: string,
         userId: string,
@@ -43,7 +30,20 @@ class NotificationReader {
                                     id: true,
                                     content: true,
                                     createdAt: true,
-                                    author: this.author,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
+                                            },
+                                        },
+                                    },
                                     totalVoteValue: true,
                                     repliesCount: true,
 
@@ -59,7 +59,20 @@ class NotificationReader {
                                     id: true,
                                     content: true,
                                     createdAt: true,
-                                    author: this.author,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
+                                            },
+                                        },
+                                    },
                                     likesCount: true,
                                     depth: true,
                                     path: true,
@@ -225,7 +238,20 @@ class NotificationReader {
                                     id: true,
                                     content: true,
                                     createdAt: true,
-                                    author: this.author,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
+                                            },
+                                        },
+                                    },
                                     likesCount: true,
                                     repliesCount: true,
 
@@ -240,7 +266,20 @@ class NotificationReader {
                                     id: true,
                                     content: true,
                                     createdAt: true,
-                                    author: this.author,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
+                                            },
+                                        },
+                                    },
                                     likesCount: true,
                                     depth: true,
                                     path: true,
@@ -399,7 +438,20 @@ class NotificationReader {
                                     id: true,
                                     content: true,
                                     createdAt: true,
-                                    author: this.author,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
+                                            },
+                                        },
+                                    },
                                     likesCount: true,
                                     depth: true,
                                     path: true,
@@ -422,7 +474,20 @@ class NotificationReader {
                                     id: true,
                                     content: true,
                                     createdAt: true,
-                                    author: this.author,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
+                                            },
+                                        },
+                                    },
                                     likesCount: true,
                                     depth: true,
                                     path: true,
@@ -591,7 +656,20 @@ class NotificationReader {
                                     id: true,
                                     createdAt: true,
                                     content: true,
-                                    author: this.author,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
+                                            },
+                                        },
+                                    },
                                     likesCount: true,
                                     depth: true,
                                     path: true,
@@ -614,7 +692,20 @@ class NotificationReader {
                                     id: true,
                                     content: true,
                                     createdAt: true,
-                                    author: this.author,
+                                    author: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatar: true,
+                                            tier: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    badgeColor: true,
+                                                },
+                                            },
+                                        },
+                                    },
                                     likesCount: true,
                                     depth: true,
                                     path: true,
@@ -774,17 +865,6 @@ class NotificationReader {
                         select: {
                             postId: true,
                             lastCommentId: true,
-                            lastComment: {
-                                select: {
-                                    postId: true,
-                                    id: true,
-                                    content: true,
-                                    likesCount: true,
-                                    createdAt: true,
-                                    repliesCount: true,
-                                    author: this.author,
-                                },
-                            },
                         },
                     },
                 },
@@ -883,7 +963,7 @@ class NotificationReader {
                     isRead: true,
                     createdAt: notification.createdAt,
                     postId,
-                    comment: notification.postComment.lastComment,
+                    lastCommentId,
                 },
             };
         });
@@ -922,17 +1002,6 @@ class NotificationReader {
                         select: {
                             questionId: true,
                             lastAnswerId: true,
-                            lastAnswer: {
-                                select: {
-                                    questionId: true,
-                                    id: true,
-                                    content: true,
-                                    totalVoteValue: true,
-                                    createdAt: true,
-                                    repliesCount: true,
-                                    author: this.author,
-                                },
-                            },
                         },
                     },
                 },
@@ -1029,7 +1098,7 @@ class NotificationReader {
                     isRead: true,
                     createdAt: notification.createdAt,
                     questionId,
-                    answer: notification.questionAnswer.lastAnswer,
+                    lastAnswerId,
                 },
             };
         });

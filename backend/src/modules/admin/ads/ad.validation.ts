@@ -61,11 +61,6 @@ const adValidation: {
             .optional()
             .isIn(['expireAt', 'priority'])
             .withMessage('Sort must be either expireAt or priority'),
-        query('cursor')
-            .trim()
-            .optional()
-            .isUUID()
-            .withMessage('Cursor must be a valid UUID'),
     ],
 
     validateUpdateAd: [

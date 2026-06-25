@@ -30,11 +30,9 @@ enum ReportStatus {
 
 enum ReportTargetType {
   COMMENT
+  REPLY
   ANSWER
-  COMMENT_REPLY
   ANSWER_REPLY
-  ANSWER_REPLY_REPLY
-  COMMENT_REPLY_REPLY
   CONTACT_REQUEST
 }
 
@@ -112,6 +110,7 @@ model User {
   lastNotificationActor Notification[] @relation("lastActor")
   notificationActors NotificationActor[]
   reports         Report[]       @relation("UserReports")
+  reviewedReports Report[]       @relation("AdminReviewedReports")
   ban             Ban?
   bansIssued Ban[] @relation("AdminBans")
   adsAdded Ad[] @relation("AdminAds")
@@ -555,6 +554,11 @@ model Report {
   reason     String
 
   status ReportStatus @default(PENDING)
+
+  reviewedById String?
+  reviewedBy User? @relation("AdminReviewedReports", fields: [reviewedById], references: [id])
+
+  reviewedAt DateTime?
 
   commentId        String?
   answerId         String?

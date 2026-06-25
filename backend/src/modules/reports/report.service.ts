@@ -18,6 +18,7 @@ class ReportService {
             reason,
         };
 
+        // if used again move it to a separate function
         switch (targetType) {
             case 'COMMENT': {
                 const exists = await prisma.comment.findUnique({
@@ -47,9 +48,7 @@ class ReportService {
                 break;
             }
 
-            case 'COMMENT_REPLY':
-            // or
-            case 'COMMENT_REPLY_REPLY': {
+            case 'REPLY': {
                 const exists = await prisma.reply.findUnique({
                     where: { id: targetId },
                     select: { id: true },
@@ -63,9 +62,7 @@ class ReportService {
                 break;
             }
 
-            case 'ANSWER_REPLY':
-            // or
-            case 'ANSWER_REPLY_REPLY': {
+            case 'ANSWER_REPLY': {
                 const exists = await prisma.answerReply.findUnique({
                     where: { id: targetId },
                     select: { id: true },
