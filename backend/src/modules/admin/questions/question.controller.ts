@@ -38,7 +38,7 @@ class QuestionController {
 
         try {
             const result = await this.questionService.getQuestions(
-                'latest',
+                'oldest',
                 cursor,
                 search,
                 status,

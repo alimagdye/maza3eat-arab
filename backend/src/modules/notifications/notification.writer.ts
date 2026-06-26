@@ -2,6 +2,8 @@ import {
     CreateReplyNotificationParams,
     CreateCommentNotificationParams,
     CreatePostOrQuestionLikeNotificationParams,
+    CreatePostOrQuestionApprovalNotificationParams,
+    CreatePostOrQuestionRejectionNotificationParams,
 } from '../../types/notification.js';
 import { prisma } from '../../lib/client.js';
 import socketService from '../../sockets/socket.service.js';
@@ -327,6 +329,96 @@ class NotificationWriter {
                 await notificationCount.getUnreadNotificationCount(recipientId),
             );
         }
+    }
+
+    async createPostOrQuestionApprovalNotification(
+        params: CreatePostOrQuestionApprovalNotificationParams,
+    ) {
+        const { recipientId, actorId, type } = params;
+
+        if (recipientId === actorId) return;
+
+        await prisma.notification.create({
+            data: {
+                type,
+                recipientId,
+                lastActorId: actorId,
+                lastActivityAt: new Date(),
+
+                ...(type === 'POST_APPROVAL'
+                    ? {
+                          postApproval: {
+                              create: {
+                                  postId: params.postId,
+                              },
+                          },
+                      }
+                    : {
+                          questionApproval: {
+                              create: {
+                                  questionId: params.questionId,
+                              },
+                          },
+                      }),
+
+                actors: {
+                    create: {
+                        actorId,
+                    },
+                },
+            },
+        });
+
+        socketService.emitNotificationCount(
+            recipientId,
+            await notificationCount.getUnreadNotificationCount(recipientId),
+        );
+    }
+
+    async createPostOrQuestionRejectionNotification(
+        params: CreatePostOrQuestionRejectionNotificationParams,
+    ) {
+        const { recipientId, actorId, type, title, reason } = params;
+
+        if (recipientId === actorId) return;
+
+        await prisma.notification.create({
+            data: {
+                type,
+                recipientId,
+                lastActorId: actorId,
+                lastActivityAt: new Date(),
+
+                ...(type === 'POST_REJECTION'
+                    ? {
+                          postRejection: {
+                              create: {
+                                  postTitle: title,
+                                  rejectionReason: reason,
+                              },
+                          },
+                      }
+                    : {
+                          questionRejection: {
+                              create: {
+                                  questionTitle: title,
+                                  rejectionReason: reason,
+                              },
+                          },
+                      }),
+
+                actors: {
+                    create: {
+                        actorId,
+                    },
+                },
+            },
+        });
+
+        socketService.emitNotificationCount(
+            recipientId,
+            await notificationCount.getUnreadNotificationCount(recipientId),
+        );
     }
 }
 export default new NotificationWriter();

@@ -77,3 +77,25 @@ export type CreatePostOrQuestionLikeNotificationParams =
 
           questionId: string;
       };
+
+export type CreatePostOrQuestionApprovalNotificationParams =
+    | {
+          recipientId: string;
+          actorId: string;
+          type: 'POST_APPROVAL';
+          postId: string;
+      }
+    | {
+          recipientId: string;
+          actorId: string;
+          type: 'QUESTION_APPROVAL';
+          questionId: string;
+      };
+
+export type CreatePostOrQuestionRejectionNotificationParams = {
+    recipientId: string;
+    actorId: string;
+    type: 'POST_REJECTION' | 'QUESTION_REJECTION';
+    title: string;
+    reason: string;
+};
