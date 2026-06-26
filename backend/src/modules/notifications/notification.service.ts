@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/client.js';
+import { NotificationType } from '@prisma/client';
 import notificationReader from './notification.reader.js';
 import notificationWriter from './notification.writer.js';
 import notificationCount from './notification.count.js';
@@ -15,9 +16,24 @@ class NotificationService {
         notificationWriter.createPostOrQuestionLikeNotification.bind(
             notificationWriter,
         );
+    createPostOrQuestionApprovalNotification =
+        notificationWriter.createPostOrQuestionApprovalNotification.bind(
+            notificationWriter,
+        );
+    createPostOrQuestionRejectionNotification =
+        notificationWriter.createPostOrQuestionRejectionNotification.bind(
+            notificationWriter,
+        );
     // counter
     getUnreadNotificationCount =
         notificationCount.getUnreadNotificationCount.bind(notificationCount);
+
+    private HIDE_ACTOR_TYPES = new Set<NotificationType>([
+        'POST_APPROVAL',
+        'QUESTION_APPROVAL',
+        'POST_REJECTION',
+        'QUESTION_REJECTION',
+    ]);
 
     async getNotifications(userId: string, cursor: string | null) {
         const take = 10;
@@ -44,7 +60,6 @@ class NotificationService {
                         id: true,
                         name: true,
                         avatar: true,
-
                         tier: {
                             select: {
                                 id: true,
@@ -63,7 +78,16 @@ class NotificationService {
             ? notifications[notifications.length - 1].id
             : null;
 
-        return { notifications, nextCursor, hasMore };
+        return {
+            notifications: notifications.map((notification) => ({
+                ...notification,
+                lastActor: this.HIDE_ACTOR_TYPES.has(notification.type)
+                    ? null
+                    : notification.lastActor,
+            })),
+            nextCursor,
+            hasMore,
+        };
     }
 
     async getNotificationById(
@@ -120,6 +144,22 @@ class NotificationService {
                 );
             case 'QUESTION_LIKE':
                 return notificationReader.getQuestionLikeNotification(
+                    notificationId,
+                );
+            case 'POST_APPROVAL':
+                return notificationReader.getPostApprovalNotification(
+                    notificationId,
+                );
+            case 'QUESTION_APPROVAL':
+                return notificationReader.getQuestionApprovalNotification(
+                    notificationId,
+                );
+            case 'POST_REJECTION':
+                return notificationReader.getPostRejectionNotification(
+                    notificationId,
+                );
+            case 'QUESTION_REJECTION':
+                return notificationReader.getQuestionRejectionNotification(
                     notificationId,
                 );
             default:

@@ -116,7 +116,7 @@ class AdminPostController {
         try {
             const result = await this.postService.getPosts(
                 'community',
-                'latest',
+                'oldest',
                 cursor,
                 search,
                 status,

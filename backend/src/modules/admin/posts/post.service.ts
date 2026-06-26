@@ -1,4 +1,5 @@
 import publicPostService from '../../posts/post.service.js';
+import NotificationService from '../../notifications/notification.service.js';
 import { prisma } from '../../../lib/client.js';
 
 class AdminPostService {
@@ -6,6 +7,7 @@ class AdminPostService {
     getPosts = publicPostService.getPosts.bind(publicPostService);
     getPostById = publicPostService.getPostById.bind(publicPostService);
     deletePostById = publicPostService.deletePostById.bind(publicPostService);
+    notificationService = NotificationService;
 
     async approveOrRejectPost(
         postId: string,
@@ -13,11 +15,13 @@ class AdminPostService {
         action: 'approve' | 'reject',
         reason: string | null = null,
     ) {
-        return prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const post = await tx.post.findUnique({
                 where: { id: postId },
                 select: {
                     status: true,
+                    authorId: true,
+                    title: true,
                 },
             });
 
@@ -31,7 +35,7 @@ class AdminPostService {
             }
 
             if (action === 'approve') {
-                return tx.post.update({
+                const data = await tx.post.update({
                     where: {
                         id: postId,
                     },
@@ -39,6 +43,8 @@ class AdminPostService {
                         status: 'APPROVED',
                     },
                 });
+
+                return { data, recipientId: post.authorId };
             }
 
             // reject
@@ -48,16 +54,40 @@ class AdminPostService {
 
             await this.deletePostById(postId, userId, 'ADMIN');
 
-            // create notification here
-            // await tx.notification.create(...)
-
             // create audit log here
             // await tx.auditLog.create(...)
 
             return {
-                rejected: true,
+                data: {
+                    rejected: true,
+                },
+                title: post.title,
+                recipientId: post.authorId,
             };
         });
+
+        if (action === 'approve') {
+            await this.notificationService.createPostOrQuestionApprovalNotification(
+                {
+                    recipientId: result.recipientId,
+                    actorId: userId,
+                    type: 'POST_APPROVAL',
+                    postId,
+                },
+            );
+        } else {
+            await this.notificationService.createPostOrQuestionRejectionNotification(
+                {
+                    recipientId: result.recipientId,
+                    actorId: userId,
+                    type: 'POST_REJECTION',
+                    title: result.title as string,
+                    reason: reason as string,
+                },
+            );
+        }
+
+        return result.data;
     }
 }
 

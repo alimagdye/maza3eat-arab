@@ -1,5 +1,6 @@
 import { prisma } from '../../../lib/client.js';
 import publicQuestionService from '../../questions/question.service.js';
+import NotificationService from '../../notifications/notification.service.js';
 
 class QuestionService {
     createQuestion = publicQuestionService.createQuestion.bind(
@@ -14,6 +15,7 @@ class QuestionService {
     deleteQuestionById = publicQuestionService.deleteQuestionById.bind(
         publicQuestionService,
     );
+    notificationService = NotificationService;
 
     async approveOrRejectQuestion(
         questionId: string,
@@ -21,11 +23,13 @@ class QuestionService {
         action: 'approve' | 'reject',
         reason: string | null = null,
     ) {
-        return prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             const question = await tx.question.findUnique({
                 where: { id: questionId },
                 select: {
                     status: true,
+                    authorId: true,
+                    title: true,
                 },
             });
 
@@ -39,7 +43,7 @@ class QuestionService {
             }
 
             if (action === 'approve') {
-                return tx.question.update({
+                const data = await tx.question.update({
                     where: {
                         id: questionId,
                     },
@@ -47,6 +51,8 @@ class QuestionService {
                         status: 'APPROVED',
                     },
                 });
+
+                return { data, recipientId: question.authorId };
             }
 
             // reject
@@ -56,16 +62,40 @@ class QuestionService {
 
             await this.deleteQuestionById(questionId, userId, 'ADMIN');
 
-            // create notification here
-            // await tx.notification.create(...)
-
             // create audit log here
             // await tx.auditLog.create(...)
 
             return {
-                rejected: true,
+                data: {
+                    rejected: true,
+                },
+                title: question.title,
+                recipientId: question.authorId,
             };
         });
+
+        if (action === 'approve') {
+            await this.notificationService.createPostOrQuestionApprovalNotification(
+                {
+                    recipientId: result.recipientId,
+                    actorId: userId,
+                    type: 'QUESTION_APPROVAL',
+                    questionId,
+                },
+            );
+        } else {
+            await this.notificationService.createPostOrQuestionRejectionNotification(
+                {
+                    recipientId: result.recipientId,
+                    actorId: userId,
+                    type: 'QUESTION_REJECTION',
+                    title: result.title as string,
+                    reason: reason as string,
+                },
+            );
+        }
+
+        return result.data;
     }
 }
 

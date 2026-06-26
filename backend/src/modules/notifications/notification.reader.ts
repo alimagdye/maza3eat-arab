@@ -1225,6 +1225,355 @@ class NotificationReader {
 
         return { notification: result.notification };
     }
+
+    async getPostApprovalNotification(notificationId: string) {
+        const result = await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: { id: notificationId },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+                    lastActivityAt: true,
+                    recipientId: true,
+                    postApproval: {
+                        select: {
+                            postId: true,
+                        },
+                    },
+                },
+            });
+            if (!notification) {
+                return null;
+            }
+
+            const wasUnread = !notification.isRead;
+
+            if (!notification?.postApproval) {
+                if (wasUnread) {
+                    await tx.notification.update({
+                        where: {
+                            id: notificationId,
+                        },
+                        data: {
+                            isRead: true,
+                        },
+                    });
+                }
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            if (wasUnread) {
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
+                    data: {
+                        isRead: true,
+                    },
+                });
+            }
+
+            return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
+                notification: {
+                    id: notification.id,
+                    type: notification.type,
+                    isRead: true,
+                    createdAt: notification.createdAt,
+                    postId: notification.postApproval.postId,
+                },
+            };
+        });
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await notificationCount.getUnreadNotificationCount(
+                    result.recipientId,
+                ),
+            );
+        }
+
+        if (!result.notification) {
+            return null;
+        }
+
+        return { notification: result.notification };
+    }
+
+    async getQuestionApprovalNotification(notificationId: string) {
+        const result = await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: { id: notificationId },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+                    lastActivityAt: true,
+                    recipientId: true,
+                    questionApproval: {
+                        select: {
+                            questionId: true,
+                        },
+                    },
+                },
+            });
+            if (!notification) {
+                return null;
+            }
+
+            const wasUnread = !notification.isRead;
+
+            if (!notification?.questionApproval) {
+                if (wasUnread) {
+                    await tx.notification.update({
+                        where: {
+                            id: notificationId,
+                        },
+                        data: {
+                            isRead: true,
+                        },
+                    });
+                }
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            if (wasUnread) {
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
+                    data: {
+                        isRead: true,
+                    },
+                });
+            }
+
+            return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
+                notification: {
+                    id: notification.id,
+                    type: notification.type,
+                    isRead: true,
+                    createdAt: notification.createdAt,
+                    questionId: notification.questionApproval.questionId,
+                },
+            };
+        });
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await notificationCount.getUnreadNotificationCount(
+                    result.recipientId,
+                ),
+            );
+        }
+
+        if (!result.notification) {
+            return null;
+        }
+
+        return { notification: result.notification };
+    }
+
+    async getPostRejectionNotification(notificationId: string) {
+        const result = await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: { id: notificationId },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+                    lastActivityAt: true,
+                    recipientId: true,
+                    postRejection: {
+                        select: {
+                            postTitle: true,
+                            rejectionReason: true,
+                        },
+                    },
+                },
+            });
+            if (!notification) {
+                return null;
+            }
+
+            const wasUnread = !notification.isRead;
+
+            if (!notification?.postRejection) {
+                if (wasUnread) {
+                    await tx.notification.update({
+                        where: {
+                            id: notificationId,
+                        },
+                        data: {
+                            isRead: true,
+                        },
+                    });
+                }
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            if (wasUnread) {
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
+                    data: {
+                        isRead: true,
+                    },
+                });
+            }
+
+            return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
+                notification: {
+                    id: notification.id,
+                    type: notification.type,
+                    isRead: true,
+                    createdAt: notification.createdAt,
+                    postTitle: notification.postRejection.postTitle,
+                    rejectionReason: notification.postRejection.rejectionReason,
+                },
+            };
+        });
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await notificationCount.getUnreadNotificationCount(
+                    result.recipientId,
+                ),
+            );
+        }
+
+        if (!result.notification) {
+            return null;
+        }
+
+        return { notification: result.notification };
+    }
+
+    async getQuestionRejectionNotification(notificationId: string) {
+        const result = await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: { id: notificationId },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+                    lastActivityAt: true,
+                    recipientId: true,
+                    questionRejection: {
+                        select: {
+                            questionTitle: true,
+                            rejectionReason: true,
+                        },
+                    },
+                },
+            });
+            if (!notification) {
+                return null;
+            }
+
+            const wasUnread = !notification.isRead;
+
+            if (!notification?.questionRejection) {
+                if (wasUnread) {
+                    await tx.notification.update({
+                        where: {
+                            id: notificationId,
+                        },
+                        data: {
+                            isRead: true,
+                        },
+                    });
+                }
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            if (wasUnread) {
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
+                    data: {
+                        isRead: true,
+                    },
+                });
+            }
+
+            return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
+                notification: {
+                    id: notification.id,
+                    type: notification.type,
+                    isRead: true,
+                    createdAt: notification.createdAt,
+                    questionTitle: notification.questionRejection.questionTitle,
+                    rejectionReason:
+                        notification.questionRejection.rejectionReason,
+                },
+            };
+        });
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await notificationCount.getUnreadNotificationCount(
+                    result.recipientId,
+                ),
+            );
+        }
+
+        if (!result.notification) {
+            return null;
+        }
+
+        return { notification: result.notification };
+    }
 }
 
 export default new NotificationReader();

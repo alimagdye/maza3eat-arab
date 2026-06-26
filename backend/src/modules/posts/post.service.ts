@@ -201,10 +201,17 @@ class PostService {
             ];
         }
 
-        const orderBy =
-            sort === 'popular'
-                ? [{ commentsCount: 'desc' as const }, { id: 'desc' as const }]
-                : [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
+        let orderBy: any;
+        if (sort === 'popular') {
+            orderBy = [
+                { commentsCount: 'desc' as const },
+                { id: 'desc' as const },
+            ];
+        } else if (sort === 'latest') {
+            orderBy = [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
+        } else if (sort === 'oldest') {
+            orderBy = [{ createdAt: 'asc' as const }, { id: 'asc' as const }];
+        }
 
         const posts = await prisma.post.findMany({
             where,

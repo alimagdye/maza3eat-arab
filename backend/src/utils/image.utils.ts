@@ -29,7 +29,7 @@ class ImageUtils {
                 fit: 'inside',
                 withoutEnlargement: true,
             })
-            .webp({ quality: 85 })
+            .webp({ quality: 90 })
             .toBuffer();
 
         return new Promise<{

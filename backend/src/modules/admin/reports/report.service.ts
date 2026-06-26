@@ -1,5 +1,4 @@
 import { prisma } from '../../../lib/client.js';
-import { ReportTargetType } from '../../../types/report.js';
 // when resolved it will be deleted, when rejected it will be deleted
 class ReportService {
     private author = {

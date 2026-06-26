@@ -51,6 +51,8 @@ enum NotificationType {
   REPORT
   POST_APPROVAL
   QUESTION_APPROVAL
+  POST_REJECTION
+  QUESTION_REJECTION
 }
 
 enum ContactRequestStatus {
@@ -194,6 +196,7 @@ model Post {
   commentReplyReplyNotifications CommentReplyReplyNotification[]
   postCommentNotifications PostCommentNotification[]
   postLikeNotifications PostLikeNotification[]
+  postApprovalNotifications PostApprovalNotification[]
   
   likesCount Int @default(0)
   commentsCount Int @default(0)
@@ -412,6 +415,7 @@ model Question {
   answerReplyReplyNotifications AnswerReplyReplyNotification[]
   questionAnswerNotifications QuestionAnswerNotification[]
   questionLikeNotifications QuestionLikeNotification[]
+  questionApprovalNotifications QuestionApprovalNotification[]
 
   likesCount Int @default(0)
   answersCount Int @default(0)
@@ -662,6 +666,10 @@ model Notification {
   answerReply   AnswerReplyNotification?
   commentReplyReply CommentReplyReplyNotification?
   answerReplyReply AnswerReplyReplyNotification?
+  postApproval PostApprovalNotification?
+  questionApproval QuestionApprovalNotification?
+  postRejection PostRejectionNotification?
+  questionRejection QuestionRejectionNotification?
   //contact         ContactNotification?
   //admin           AdminNotification?
   //moderation      ModerationNotification?
@@ -792,6 +800,46 @@ model QuestionLikeNotification {
 
   questionId String 
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade) // liked question preview 
+}
+
+model PostApprovalNotification {
+  id String @id @default(uuid())
+
+  notificationId String @unique 
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  postId String 
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade) // approved post
+}
+
+model QuestionApprovalNotification {
+  id String @id @default(uuid())
+
+  notificationId String @unique 
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  questionId String 
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade) // approved question
+}
+
+model PostRejectionNotification {
+  id String @id @default(uuid())
+
+  notificationId String @unique 
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  postTitle String
+  rejectionReason String
+}
+
+model QuestionRejectionNotification {
+  id String @id @default(uuid())
+
+  notificationId String @unique 
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  questionTitle String
+  rejectionReason String
 }
 
 //model ModerationNotification {
