@@ -4,13 +4,18 @@ import SOCKET_EVENTS from './socket.events.js';
 class SocketService {
     emitNotificationCount(
         userId: string,
-        unreadNotification: { count: number; isCapped: boolean },
+        unreadNotification: {
+            total: { count: number; isCapped: boolean };
+            notifications: { count: number; isCapped: boolean };
+            contactRequests: { count: number; isCapped: boolean };
+        },
     ) {
         const io = getIO();
 
         io.to(`user:${userId}`).emit(SOCKET_EVENTS.NOTIFICATION_COUNT, {
-            count: unreadNotification.count,
-            isCapped: unreadNotification.isCapped,
+            total: unreadNotification.total,
+            notifications: unreadNotification.notifications,
+            contactRequests: unreadNotification.contactRequests,
         });
     }
     emitForceLogout(userId: string, reason: string) {
