@@ -21,8 +21,6 @@ class ReportController {
                 report,
             });
         } catch (error: any) {
-            console.error('Error creating report:', error);
-
             if (error.message === 'INVALID_TARGET_TYPE') {
                 return res.status(400).json({
                     message: 'Invalid target type',
@@ -43,6 +41,7 @@ class ReportController {
                 }
             }
 
+            console.error('Error creating report:', error);
             res.status(500).json({
                 message: 'An error occurred while creating the report',
             });
