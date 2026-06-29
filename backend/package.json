@@ -22,7 +22,8 @@
         "db:migrate": "prisma migrate dev",
         "db:seed": "prisma db seed",
         "db:setup": "prisma migrate dev && prisma db seed",
-        "db:setup:prod": "prisma generate && prisma migrate deploy && prisma db seed"
+        "db:setup:prod": "prisma generate && prisma migrate deploy && prisma db seed",
+        "seed:notifications": "tsx scripts/seed-test-notifications.ts"
     },
     "prisma": {
         "seed": "node prisma/seed.js"

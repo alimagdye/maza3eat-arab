@@ -3,6 +3,7 @@ import { NotificationType } from '@prisma/client';
 import notificationReader from './notification.reader.js';
 import notificationWriter from './notification.writer.js';
 import notificationCount from './notification.count.js';
+import socketService from '../../sockets/socket.service.js';
 
 class NotificationService {
     // Writers
@@ -166,6 +167,7 @@ class NotificationService {
                 return null;
         }
     }
+
 }
 
 export default new NotificationService();
