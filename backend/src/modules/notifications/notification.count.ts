@@ -2,54 +2,60 @@ import { prisma } from '../../lib/client.js';
 
 class NotificationCount {
     async getUnreadNotificationCount(userId: string) {
-        const notifications = await prisma.notification.findMany({
-            where: {
-                recipientId: userId,
-                isRead: false,
-            },
-            select: {
-                id: true,
-            },
-            take: 100,
-        });
+        const [notifications, requests] = await Promise.all([
+            prisma.notification.findMany({
+                where: {
+                    recipientId: userId,
+                    isRead: false,
+                },
+                select: {
+                    id: true,
+                },
+                take: 100,
+            }),
+            prisma.contactRequest.findMany({
+                where: {
+                    OR: [
+                        {
+                            requesterId: userId,
+                            status: 'ACCEPTED',
+                            requesterHasRead: false,
+                        },
+                        {
+                            receiverId: userId,
+                            status: 'PENDING',
+                            receiverHasRead: false,
+                        },
+                    ],
+                },
+                select: {
+                    id: true,
+                },
+                take: 100,
+            }),
+        ]);
 
-        // already capped
-        if (notifications.length >= 100) {
-            return {
-                count: 99,
-                isCapped: true,
-            };
-        }
+        const notificationCount: number = notifications.length;
+        const requestCount: number = requests.length;
 
-        // only fetch remaining needed
-        const remaining = 100 - notifications.length;
+        const notificationIsCapped: boolean = notificationCount >= 100;
+        const requestIsCapped: boolean = requestCount >= 100;
 
-        const requests = await prisma.contactRequest.findMany({
-            where: {
-                OR: [
-                    {
-                        requesterId: userId,
-                        status: 'ACCEPTED',
-                        requesterHasRead: false,
-                    },
-                    {
-                        receiverId: userId,
-                        status: 'PENDING',
-                        receiverHasRead: false,
-                    },
-                ],
-            },
-            select: {
-                id: true,
-            },
-            take: remaining,
-        });
-
-        const total = notifications.length + requests.length;
+        const totalCount: number = notificationCount + requestCount;
 
         return {
-            count: Math.min(total, 99),
-            isCapped: total >= 100,
+            total: {
+                count: Math.min(totalCount, 99),
+                isCapped: totalCount >= 100,
+            },
+            notifications: {
+                count: Math.min(notificationCount, 99),
+                isCapped: notificationIsCapped,
+            },
+            contactRequests: {
+                count: Math.min(requestCount, 99),
+                isCapped: requestIsCapped,
+            },
         };
     }
 }
