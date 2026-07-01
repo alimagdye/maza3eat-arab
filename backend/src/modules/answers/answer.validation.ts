@@ -20,6 +20,10 @@ const answerValidation: {
     validateGetAnswersByQuestionId: [
         param('questionId').isUUID().withMessage('Invalid question ID'),
         query('cursor').optional().isUUID().withMessage('Invalid cursor'),
+        query('excludeAnswerId')
+            .optional()
+            .isUUID()
+            .withMessage('Invalid excludeAnswerId'),
     ],
 };
 

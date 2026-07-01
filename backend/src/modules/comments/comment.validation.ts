@@ -23,6 +23,10 @@ const commentValidation: {
             .optional()
             .isUUID()
             .withMessage('Invalid cursor'),
+        query('excludeCommentId')
+            .optional()
+            .isUUID()
+            .withMessage('Invalid excludeCommentId'),
     ],
 };
 

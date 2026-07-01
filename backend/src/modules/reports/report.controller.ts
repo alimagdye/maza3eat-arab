@@ -41,7 +41,6 @@ class ReportController {
                 }
             }
 
-            console.error('Error creating report:', error);
             res.status(500).json({
                 message: 'An error occurred while creating the report',
             });

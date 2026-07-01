@@ -48,12 +48,16 @@ class CommentController {
             const cursor = req.query.cursor as string | null;
             const userId = req.user ? req.user.sub : null;
             const role = req.user ? req.user.role : null;
+            const excludeCommentId = req.query.excludeCommentId as
+                | string
+                | null;
 
             const data = await this.commentService.getCommentsByPostId(
                 postId,
                 cursor,
                 userId,
-                role
+                role,
+                excludeCommentId,
             );
 
             res.json({
@@ -86,7 +90,7 @@ class CommentController {
                 commentId,
                 postId,
                 userId,
-                role
+                role,
             );
             res.status(204).send();
         } catch (error: any) {

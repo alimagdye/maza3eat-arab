@@ -63,6 +63,7 @@ class CommentService {
         cursor: string | null = null,
         userId: string | null = null,
         role: 'USER' | 'ADMIN' | null = null,
+        excludeCommentId: string | null = null,
     ) {
         const pageSize = 10;
 
@@ -78,7 +79,12 @@ class CommentService {
         }
 
         const comments = await prisma.comment.findMany({
-            where: { postId },
+            where: {
+                postId,
+                ...(excludeCommentId && {
+                    NOT: { id: excludeCommentId },
+                }),
+            },
 
             take: pageSize + 1,
 
