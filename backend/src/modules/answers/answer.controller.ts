@@ -48,12 +48,16 @@ class AnswerController {
             const cursor = req.query.cursor as string | null;
             const userId = req.user ? req.user.sub : null;
             const role = req.user ? req.user.role : null;
+            const excludeAnswerId = req.query.excludeAnswerId as
+                | string
+                | null;
 
             const data = await this.answerService.getAnswersByQuestionId(
                 questionId,
                 cursor,
                 userId,
                 role,
+                excludeAnswerId,
             );
 
             res.json({
