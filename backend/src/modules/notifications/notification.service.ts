@@ -33,6 +33,7 @@ class NotificationService {
         'QUESTION_APPROVAL',
         'POST_REJECTION',
         'QUESTION_REJECTION',
+        'ADMIN_ANNOUNCEMENT',
     ]);
 
     async getNotifications(userId: string, cursor: string | null) {
@@ -40,7 +41,7 @@ class NotificationService {
 
         const notifications = await prisma.notification.findMany({
             where: {
-                recipientId: userId,
+                OR: [{ type: 'ADMIN_ANNOUNCEMENT' }, { recipientId: userId }],
             },
             take,
             ...(cursor && {
@@ -69,6 +70,20 @@ class NotificationService {
                         },
                     },
                 },
+
+                adminNotification: {
+                    select: {
+                        adminNotificationReadStates: {
+                            where: {
+                                userId,
+                            },
+                            take: 1,
+                            select: {
+                                id: true,
+                            },
+                        },
+                    },
+                },
             },
         });
 
@@ -79,12 +94,25 @@ class NotificationService {
             : null;
 
         return {
-            notifications: notifications.map((notification) => ({
-                ...notification,
-                lastActor: this.HIDE_ACTOR_TYPES.has(notification.type)
-                    ? null
-                    : notification.lastActor,
-            })),
+            notifications: notifications.map((notification) => {
+                const { adminNotification, ...rest } = notification;
+
+                return {
+                    ...rest,
+
+                    lastActor: this.HIDE_ACTOR_TYPES.has(notification.type)
+                        ? null
+                        : notification.lastActor,
+
+                    // if the notification is an admin announcement, we need to check the read state for the given user else we can use the isRead for personal notifications
+                    isRead:
+                        notification.type === 'ADMIN_ANNOUNCEMENT'
+                            ? !!adminNotification?.adminNotificationReadStates
+                                  .length
+                            : notification.isRead,
+                };
+            }),
+
             nextCursor,
             hasMore,
         };
@@ -102,8 +130,13 @@ class NotificationService {
                 recipientId: true,
             },
         });
+        console.log('do we come before this recipient check');
 
-        if (!notification || notification.recipientId !== userId) {
+        if (
+            !notification ||
+            (notification.recipientId !== userId &&
+                notification.type !== 'ADMIN_ANNOUNCEMENT')
+        ) {
             return null;
         }
 
@@ -135,9 +168,15 @@ class NotificationService {
             case 'COMMENT':
                 return notificationReader.getCommentNotification(
                     notificationId,
+                    userId,
+                    role,
                 );
             case 'ANSWER':
-                return notificationReader.getAnswerNotification(notificationId);
+                return notificationReader.getAnswerNotification(
+                    notificationId,
+                    userId,
+                    role,
+                );
             case 'POST_LIKE':
                 return notificationReader.getPostLikeNotification(
                     notificationId,
@@ -162,11 +201,15 @@ class NotificationService {
                 return notificationReader.getQuestionRejectionNotification(
                     notificationId,
                 );
+            case 'ADMIN_ANNOUNCEMENT':
+                return notificationReader.getAdminAnnouncementNotification(
+                    notificationId,
+                    userId,
+                );
             default:
                 return null;
         }
     }
-
 }
 
 export default new NotificationService();

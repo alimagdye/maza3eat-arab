@@ -99,3 +99,9 @@ export type CreatePostOrQuestionRejectionNotificationParams = {
     title: string;
     reason: string;
 };
+
+export type CreateAdminAnnouncementNotificationParams = {
+    actorId: string;
+    type: 'ADMIN_ANNOUNCEMENT';
+    message: string;
+};

@@ -4,6 +4,7 @@ import {
     CreatePostOrQuestionLikeNotificationParams,
     CreatePostOrQuestionApprovalNotificationParams,
     CreatePostOrQuestionRejectionNotificationParams,
+    CreateAdminAnnouncementNotificationParams,
 } from '../../types/notification.js';
 import { prisma } from '../../lib/client.js';
 import socketService from '../../sockets/socket.service.js';
@@ -419,6 +420,35 @@ class NotificationWriter {
             recipientId,
             await notificationCount.getUnreadNotificationCount(recipientId),
         );
+    }
+
+    async createAdminAnnouncementNotification(
+        params: CreateAdminAnnouncementNotificationParams,
+    ) {
+        const { actorId, type, message } = params;
+
+        await prisma.notification.create({
+            data: {
+                type,
+                recipientId: null,
+                lastActorId: actorId,
+                lastActivityAt: new Date(),
+
+                adminAnnouncement: {
+                    create: {
+                        message,
+                    },
+                },
+
+                actors: {
+                    create: {
+                        actorId,
+                    },
+                },
+            },
+        });
+
+        socketService.emitGlobalNotification();
     }
 }
 export default new NotificationWriter();
