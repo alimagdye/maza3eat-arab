@@ -5,8 +5,23 @@ class NotificationCount {
         const [notifications, requests] = await Promise.all([
             prisma.notification.findMany({
                 where: {
-                    recipientId: userId,
-                    isRead: false,
+                    OR: [
+                        {
+                            recipientId: userId,
+                            isRead: false,
+                        },
+                        {
+                            type: 'ADMIN_ANNOUNCEMENT',
+                            adminNotification: {
+                                adminNotificationReadStates: {
+                                    // should I add where instead of that? should I add take 1
+                                    none: {
+                                        userId,
+                                    },
+                                },
+                            },
+                        },
+                    ],
                 },
                 select: {
                     id: true,

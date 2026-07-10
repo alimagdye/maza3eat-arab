@@ -182,7 +182,7 @@ class NotificationReader {
         }
 
         // emit after commit
-        if (result.shouldEmit) {
+        if (result.shouldEmit && result.recipientId) {
             socketService.emitNotificationCount(
                 result.recipientId,
                 await notificationCount.getUnreadNotificationCount(
@@ -359,7 +359,7 @@ class NotificationReader {
             return null;
         }
 
-        if (result.shouldEmit) {
+        if (result.shouldEmit && result.recipientId) {
             socketService.emitNotificationCount(
                 result.recipientId,
                 await notificationCount.getUnreadNotificationCount(
@@ -551,7 +551,7 @@ class NotificationReader {
             return null;
         }
 
-        if (result.shouldEmit) {
+        if (result.shouldEmit && result.recipientId) {
             socketService.emitNotificationCount(
                 result.recipientId,
                 await notificationCount.getUnreadNotificationCount(
@@ -743,7 +743,7 @@ class NotificationReader {
             return null;
         }
 
-        if (result.shouldEmit) {
+        if (result.shouldEmit && result.recipientId) {
             socketService.emitNotificationCount(
                 result.recipientId,
                 await notificationCount.getUnreadNotificationCount(
@@ -759,7 +759,11 @@ class NotificationReader {
         return { notification: result.notification };
     }
 
-    async getCommentNotification(notificationId: string) {
+    async getCommentNotification(
+        notificationId: string,
+        userId: string,
+        role: 'USER' | 'ADMIN',
+    ) {
         const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
                 where: { id: notificationId },
@@ -783,6 +787,10 @@ class NotificationReader {
                                     createdAt: true,
                                     repliesCount: true,
                                     author: this.author,
+                                    likes: {
+                                        where: { userId },
+                                        select: { userId: true },
+                                    },
                                 },
                             },
                         },
@@ -796,16 +804,12 @@ class NotificationReader {
 
             const wasUnread = !notification.isRead;
 
-            // case: post is deleted
-            if (!notification?.postComment) {
+            // case: post deleted
+            if (!notification.postComment) {
                 if (wasUnread) {
                     await tx.notification.update({
-                        where: {
-                            id: notificationId,
-                        },
-                        data: {
-                            isRead: true,
-                        },
+                        where: { id: notificationId },
+                        data: { isRead: true },
                     });
                 }
 
@@ -816,11 +820,13 @@ class NotificationReader {
                 };
             }
 
-            let { lastCommentId, postId } = notification.postComment;
+            const { postId } = notification.postComment;
 
-            // Fix if lastComment was deleted
-            if (!lastCommentId) {
-                const fallback = await tx.comment.findFirst({
+            let comment = notification.postComment.lastComment;
+
+            // fix if last comment was deleted
+            if (!comment) {
+                comment = await tx.comment.findFirst({
                     where: {
                         postId,
                         createdAt: {
@@ -828,20 +834,30 @@ class NotificationReader {
                             lte: notification.lastActivityAt,
                         },
                     },
-                    orderBy: { createdAt: 'desc' },
-                    select: { id: true },
+                    orderBy: {
+                        createdAt: 'desc',
+                    },
+                    select: {
+                        postId: true,
+                        id: true,
+                        content: true,
+                        likesCount: true,
+                        createdAt: true,
+                        repliesCount: true,
+                        author: this.author,
+                        likes: {
+                            where: { userId },
+                            select: { userId: true },
+                        },
+                    },
                 });
 
-                // case: all comments are deleted
-                if (!fallback) {
+                // case: all comments deleted
+                if (!comment) {
                     if (wasUnread) {
                         await tx.notification.update({
-                            where: {
-                                id: notificationId,
-                            },
-                            data: {
-                                isRead: true,
-                            },
+                            where: { id: notificationId },
+                            data: { isRead: true },
                         });
                     }
 
@@ -852,27 +868,26 @@ class NotificationReader {
                     };
                 }
 
-                // persist fix
+                // persist repaired pointer
                 await tx.postCommentNotification.update({
                     where: { notificationId },
                     data: {
-                        lastCommentId: fallback.id,
+                        lastCommentId: comment.id,
                     },
                 });
-
-                lastCommentId = fallback.id;
             }
 
             if (wasUnread) {
                 await tx.notification.update({
-                    where: {
-                        id: notificationId,
-                    },
+                    where: { id: notificationId },
                     data: {
                         isRead: true,
                     },
                 });
             }
+
+            const isLikedByMe = comment.likes.length > 0;
+            const isCommentOwner = comment.author.id === userId;
 
             return {
                 recipientId: notification.recipientId,
@@ -883,15 +898,32 @@ class NotificationReader {
                     isRead: true,
                     createdAt: notification.createdAt,
                     postId,
-                    comment: notification.postComment.lastComment,
+
+                    comment: {
+                        id: comment.id,
+                        postId: comment.postId,
+                        content: comment.content,
+                        likesCount: comment.likesCount,
+                        createdAt: comment.createdAt,
+                        repliesCount: comment.repliesCount,
+                        author: comment.author,
+
+                        isLikedByMe,
+
+                        permissions: {
+                            canDelete: isCommentOwner || role === 'ADMIN',
+                            canReport: !isCommentOwner,
+                        },
+                    },
                 },
             };
         });
+
         if (!result) {
             return null;
         }
 
-        if (result.shouldEmit) {
+        if (result.shouldEmit && result.recipientId) {
             socketService.emitNotificationCount(
                 result.recipientId,
                 await notificationCount.getUnreadNotificationCount(
@@ -904,10 +936,16 @@ class NotificationReader {
             return null;
         }
 
-        return { notification: result.notification };
+        return {
+            notification: result.notification,
+        };
     }
 
-    async getAnswerNotification(notificationId: string) {
+    async getAnswerNotification(
+        notificationId: string,
+        userId: string,
+        role: 'USER' | 'ADMIN',
+    ) {
         const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
                 where: { id: notificationId },
@@ -931,6 +969,10 @@ class NotificationReader {
                                     createdAt: true,
                                     repliesCount: true,
                                     author: this.author,
+                                    votes: {
+                                        where: { userId },
+                                        select: { value: true },
+                                    },
                                 },
                             },
                         },
@@ -963,11 +1005,13 @@ class NotificationReader {
                 };
             }
 
-            let { lastAnswerId, questionId } = notification.questionAnswer;
+            const { questionId } = notification.questionAnswer;
 
-            // Fix if lastAnswer was deleted
-            if (!lastAnswerId) {
-                const fallback = await tx.answer.findFirst({
+            let answer = notification.questionAnswer.lastAnswer;
+
+            // fix if lastAnswer was deleted
+            if (!answer) {
+                answer = await tx.answer.findFirst({
                     where: {
                         questionId,
                         createdAt: {
@@ -976,10 +1020,22 @@ class NotificationReader {
                         },
                     },
                     orderBy: { createdAt: 'desc' },
-                    select: { id: true },
+                    select: {
+                        questionId: true,
+                        id: true,
+                        content: true,
+                        totalVoteValue: true,
+                        createdAt: true,
+                        repliesCount: true,
+                        author: this.author,
+                        votes: {
+                            where: { userId },
+                            select: { value: true },
+                        },
+                    },
                 });
 
-                if (!fallback) {
+                if (!answer) {
                     if (wasUnread) {
                         await tx.notification.update({
                             where: {
@@ -998,15 +1054,13 @@ class NotificationReader {
                     };
                 }
 
-                // persist fix
+                // persist repaired pointer
                 await tx.questionAnswerNotification.update({
                     where: { notificationId },
                     data: {
-                        lastAnswerId: fallback.id,
+                        lastAnswerId: answer.id,
                     },
                 });
-
-                lastAnswerId = fallback.id;
             }
 
             if (wasUnread) {
@@ -1020,6 +1074,9 @@ class NotificationReader {
                 });
             }
 
+            const myVote = answer.votes[0]?.value ?? 0;
+            const isAnswerOwner = answer.author.id === userId;
+
             return {
                 recipientId: notification.recipientId,
                 shouldEmit: wasUnread,
@@ -1029,7 +1086,23 @@ class NotificationReader {
                     isRead: true,
                     createdAt: notification.createdAt,
                     questionId,
-                    answer: notification.questionAnswer.lastAnswer,
+
+                    answer: {
+                        id: answer.id,
+                        questionId: answer.questionId,
+                        content: answer.content,
+                        totalVoteValue: answer.totalVoteValue,
+                        createdAt: answer.createdAt,
+                        repliesCount: answer.repliesCount,
+                        author: answer.author,
+
+                        myVote,
+
+                        permissions: {
+                            canDelete: isAnswerOwner || role === 'ADMIN',
+                            canReport: !isAnswerOwner,
+                        },
+                    },
                 },
             };
         });
@@ -1037,7 +1110,7 @@ class NotificationReader {
             return null;
         }
 
-        if (result.shouldEmit) {
+        if (result.shouldEmit && result.recipientId) {
             socketService.emitNotificationCount(
                 result.recipientId,
                 await notificationCount.getUnreadNotificationCount(
@@ -1124,7 +1197,7 @@ class NotificationReader {
             return null;
         }
 
-        if (result.shouldEmit) {
+        if (result.shouldEmit && result.recipientId) {
             socketService.emitNotificationCount(
                 result.recipientId,
                 await notificationCount.getUnreadNotificationCount(
@@ -1210,7 +1283,7 @@ class NotificationReader {
             return null;
         }
 
-        if (result.shouldEmit) {
+        if (result.shouldEmit && result.recipientId) {
             socketService.emitNotificationCount(
                 result.recipientId,
                 await notificationCount.getUnreadNotificationCount(
@@ -1296,7 +1369,7 @@ class NotificationReader {
             return null;
         }
 
-        if (result.shouldEmit) {
+        if (result.shouldEmit && result.recipientId) {
             socketService.emitNotificationCount(
                 result.recipientId,
                 await notificationCount.getUnreadNotificationCount(
@@ -1382,7 +1455,7 @@ class NotificationReader {
             return null;
         }
 
-        if (result.shouldEmit) {
+        if (result.shouldEmit && result.recipientId) {
             socketService.emitNotificationCount(
                 result.recipientId,
                 await notificationCount.getUnreadNotificationCount(
@@ -1470,7 +1543,7 @@ class NotificationReader {
             return null;
         }
 
-        if (result.shouldEmit) {
+        if (result.shouldEmit && result.recipientId) {
             socketService.emitNotificationCount(
                 result.recipientId,
                 await notificationCount.getUnreadNotificationCount(
@@ -1559,7 +1632,7 @@ class NotificationReader {
             return null;
         }
 
-        if (result.shouldEmit) {
+        if (result.shouldEmit && result.recipientId) {
             socketService.emitNotificationCount(
                 result.recipientId,
                 await notificationCount.getUnreadNotificationCount(
@@ -1573,6 +1646,94 @@ class NotificationReader {
         }
 
         return { notification: result.notification };
+    }
+
+    async getAdminAnnouncementNotification(
+        notificationId: string,
+        userId: string,
+    ) {
+        const result = await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: {
+                    id: notificationId,
+                },
+                select: {
+                    id: true,
+                    type: true,
+                    createdAt: true,
+                    lastActivityAt: true,
+
+                    adminNotification: {
+                        select: {
+                            id: true,
+                            message: true,
+
+                            adminNotificationReadStates: {
+                                where: {
+                                    userId,
+                                },
+                                take: 1,
+                                select: {
+                                    id: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+
+            if (!notification || !notification.adminNotification) {
+                return null;
+            }
+
+            const wasUnread =
+                notification.adminNotification.adminNotificationReadStates
+                    .length === 0;
+
+            if (wasUnread) {
+                await tx.adminNotificationReadState.upsert({
+                    where: {
+                        userId_adminNotificationId: {
+                            userId,
+                            adminNotificationId:
+                                notification.adminNotification.id,
+                        },
+                    },
+                    update: {},
+                    create: {
+                        userId,
+                        adminNotificationId: notification.adminNotification.id,
+                    },
+                });
+            }
+
+            return {
+                shouldEmit: wasUnread,
+
+                notification: {
+                    id: notification.id,
+                    type: notification.type,
+                    isRead: true,
+                    createdAt: notification.createdAt,
+                    message: notification.adminNotification.message,
+                },
+            };
+        });
+
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit) {
+            socketService.emitNotificationCount(
+                userId,
+                await notificationCount.getUnreadNotificationCount(userId),
+            );
+        }
+
+        return {
+            notification: result.notification,
+        };
     }
 }
 

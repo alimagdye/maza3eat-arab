@@ -18,6 +18,13 @@ class SocketService {
             contactRequests: unreadNotification.contactRequests,
         });
     }
+
+    emitGlobalNotification() {
+        const io = getIO();
+
+        io.emit(SOCKET_EVENTS.ANNOUNCEMENT_NOTIFICATION);
+    }
+
     emitForceLogout(userId: string, reason: string) {
         const io = getIO();
 

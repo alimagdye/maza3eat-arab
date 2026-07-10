@@ -82,12 +82,9 @@ class AnswerService {
         const answers = await prisma.answer.findMany({
             where: {
                 questionId,
-                where: {
-                    questionId,
-                    ...(excludeAnswerId && {
-                        NOT: { id: excludeAnswerId },
-                    }),
-                },
+                ...(excludeAnswerId && {
+                    NOT: { id: excludeAnswerId },
+                }),
             },
 
             take: pageSize + 1,

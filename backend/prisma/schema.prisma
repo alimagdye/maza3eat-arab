@@ -53,6 +53,7 @@ enum NotificationType {
   QUESTION_APPROVAL
   POST_REJECTION
   QUESTION_REJECTION
+  ADMIN_ANNOUNCEMENT
 }
 
 enum ContactRequestStatus {
@@ -113,6 +114,7 @@ model User {
   notifications   Notification[] @relation("Recipient")
   lastNotificationActor Notification[] @relation("lastActor")
   notificationActors NotificationActor[]
+  adminNotificationReadStates AdminNotificationReadState[] @relation("announcementsIsReadStates")
   reports         Report[]       @relation("UserReports")
   ban             Ban?
   bansIssued Ban[] @relation("AdminBans")
@@ -639,10 +641,10 @@ model Notification {
 
   type        NotificationType
 
-  recipientId String
-  recipient   User @relation("Recipient",fields: [recipientId], references: [id], onDelete: Cascade)
+  recipientId String?
+  recipient   User? @relation("Recipient",fields: [recipientId], references: [id], onDelete: Cascade)
 
-  // read state
+  // read state for personal notifications
   isRead      Boolean  @default(false)
 
   // aggregation key (e.g., "POST_LIKE:postId") 
@@ -670,9 +672,7 @@ model Notification {
   questionApproval QuestionApprovalNotification?
   postRejection PostRejectionNotification?
   questionRejection QuestionRejectionNotification?
-  //contact         ContactNotification?
-  //admin           AdminNotification?
-  //moderation      ModerationNotification?
+  adminNotification           AdminNotification?
 
   @@index([recipientId, lastActivityAt(sort: Desc)]) 
   @@index([recipientId, groupKey]) 
@@ -842,18 +842,28 @@ model QuestionRejectionNotification {
   rejectionReason String
 }
 
-//model ModerationNotification {
-  //id String @id @default(uuid())
+model AdminNotification {
+  id String @id @default(uuid())
 
-  //notificationId String @unique 
-  //notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  notificationId String @unique 
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
-  //postId String?
-  //post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  message String
 
-  //questionId String?
-  //question Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
-//}
+  adminNotificationReadStates AdminNotificationReadState[]
+}
+
+model AdminNotificationReadState {
+  id String @id @default(uuid())
+
+  userId String
+  user User @relation("announcementsIsReadStates", fields: [userId], references: [id], onDelete: Cascade)
+
+  adminNotificationId String
+  adminNotification AdminNotification @relation(fields: [adminNotificationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, adminNotificationId])
+}
 
 //////////////////////////////////////////////////////
 // ADS
