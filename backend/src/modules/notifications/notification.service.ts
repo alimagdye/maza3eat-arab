@@ -24,6 +24,10 @@ class NotificationService {
         notificationWriter.createPostOrQuestionRejectionNotification.bind(
             notificationWriter,
         );
+    createTierUpgradeNotification =
+        notificationWriter.createTierUpgradeNotification.bind(
+            notificationWriter,
+        );
     // counter
     getUnreadNotificationCount =
         notificationCount.getUnreadNotificationCount.bind(notificationCount);
@@ -34,6 +38,7 @@ class NotificationService {
         'POST_REJECTION',
         'QUESTION_REJECTION',
         'ADMIN_ANNOUNCEMENT',
+        'TIER_UPGRADE',
     ]);
 
     async getNotifications(userId: string, cursor: string | null) {
@@ -205,6 +210,10 @@ class NotificationService {
                 return notificationReader.getAdminAnnouncementNotification(
                     notificationId,
                     userId,
+                );
+            case 'TIER_UPGRADE':
+                return notificationReader.getTierUpgradeNotification(
+                    notificationId,
                 );
             default:
                 return null;

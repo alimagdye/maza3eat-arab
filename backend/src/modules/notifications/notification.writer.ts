@@ -4,7 +4,7 @@ import {
     CreatePostOrQuestionLikeNotificationParams,
     CreatePostOrQuestionApprovalNotificationParams,
     CreatePostOrQuestionRejectionNotificationParams,
-    CreateAdminAnnouncementNotificationParams,
+    CreateTierUpgradeNotificationParams,
 } from '../../types/notification.js';
 import { prisma } from '../../lib/client.js';
 import socketService from '../../sockets/socket.service.js';
@@ -422,21 +422,21 @@ class NotificationWriter {
         );
     }
 
-    async createAdminAnnouncementNotification(
-        params: CreateAdminAnnouncementNotificationParams,
+    async createTierUpgradeNotification(
+        params: CreateTierUpgradeNotificationParams,
     ) {
-        const { actorId, type, message } = params;
+        const { recipientId, oldTierId, newTierId, actorId } = params;
 
         await prisma.notification.create({
             data: {
-                type,
-                recipientId: null,
+                type: 'TIER_UPGRADE',
+                recipientId,
                 lastActorId: actorId,
                 lastActivityAt: new Date(),
-
-                adminAnnouncement: {
+                tierUpgradeNotification: {
                     create: {
-                        message,
+                        oldTierId,
+                        newTierId,
                     },
                 },
 
@@ -448,7 +448,10 @@ class NotificationWriter {
             },
         });
 
-        socketService.emitGlobalNotification();
+        socketService.emitNotificationCount(
+            recipientId,
+            await notificationCount.getUnreadNotificationCount(recipientId),
+        );
     }
 }
 export default new NotificationWriter();

@@ -1,7 +1,10 @@
 import { prisma } from '../../../lib/client.js';
 import socketService from '../../../sockets/socket.service.js';
+import NotificationService from '../../notifications/notification.service.js';
 
 class UserService {
+    notificationService = NotificationService;
+
     async getUsers(
         status: 'active' | 'banned' = 'banned',
         cursor: string | null = null,
@@ -157,53 +160,84 @@ class UserService {
         }
     }
 
-    async updateUserTier(userId: string, tierId: number) {
-        try {
-            const updatedUser = await prisma.user.update({
-                where: {
-                    id: userId,
-                    role: 'USER',
-                    ban: null,
-                },
-                data: {
-                    tier: {
-                        connect: {
-                            id: tierId,
-                        },
-                    },
-                },
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    avatar: true,
-                    createdAt: true,
-                    tier: {
-                        select: {
-                            id: true,
-                            name: true,
-                            badgeColor: true,
-                        },
-                    },
-                },
-            });
+    async updateUserTier(userId: string, tierId: number, adminId: string) {
+        // get current user tier
+        const user = await prisma.user.findUnique({
+            where: {
+                id: userId,
+                role: 'USER',
+                ban: null,
+            },
+            select: {
+                tierId: true,
+            },
+        });
 
-            // TODO: notify user about tier change
-
-            return updatedUser;
-        } catch (error: any) {
-            // relation connect failed: tier not found
-            if (error.code === 'P2025' && error.message.includes('connect')) {
-                throw new Error('TIER_NOT_FOUND');
-            }
-
-            // user lookup failed
-            if (error.code === 'P2025') {
-                throw new Error('USER_NOT_FOUND');
-            }
-
-            throw error;
+        if (!user) {
+            throw new Error('USER_NOT_FOUND');
         }
+
+        // no change
+        if (user.tierId === tierId) {
+            throw new Error('USER_ALREADY_HAS_THIS_TIER');
+        }
+
+        // check target tier
+        const tier = await prisma.tier.findUnique({
+            where: {
+                id: tierId,
+            },
+            select: {
+                id: true,
+                isSystem: true,
+            },
+        });
+
+        if (!tier || tier.isSystem) {
+            throw new Error('TIER_NOT_FOUND');
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: {
+                id: userId,
+                role: 'USER',
+                ban: null,
+            },
+            data: {
+                tier: {
+                    connect: {
+                        id: tierId,
+                    },
+                },
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                avatar: true,
+                createdAt: true,
+                tier: {
+                    select: {
+                        id: true,
+                        name: true,
+                        badgeColor: true,
+                        description: true,
+                    },
+                },
+            },
+        });
+
+        // notify only on upgrades
+        if (tierId > user.tierId) {
+            await this.notificationService.createTierUpgradeNotification({
+                recipientId: userId,
+                oldTierId: user.tierId,
+                newTierId: tierId,
+                actorId: adminId,
+            });
+        }
+
+        return updatedUser;
     }
 }
 

@@ -100,8 +100,9 @@ export type CreatePostOrQuestionRejectionNotificationParams = {
     reason: string;
 };
 
-export type CreateAdminAnnouncementNotificationParams = {
+export type CreateTierUpgradeNotificationParams = {
+    recipientId: string;
     actorId: string;
-    type: 'ADMIN_ANNOUNCEMENT';
-    message: string;
+    oldTierId: number;
+    newTierId: number;
 };
