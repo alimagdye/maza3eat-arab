@@ -54,6 +54,7 @@ enum NotificationType {
   POST_REJECTION
   QUESTION_REJECTION
   ADMIN_ANNOUNCEMENT
+  TIER_UPGRADE
 }
 
 enum ContactRequestStatus {
@@ -92,7 +93,7 @@ model User {
   avatar   String
   role     UserRole @default(USER)
 
-  tierId Int // see it when work on admin upgrade users tiers
+  tierId Int
   tier   Tier @relation(fields: [tierId], references: [id])
 
   posts       Post[]
@@ -169,6 +170,8 @@ model Tier {
   isSystem Boolean @default(false)
 
   users User[]
+  oldTierUpgradeNotifications TierUpgradeNotification[] @relation("OldTier")
+  newTierUpgradeNotifications TierUpgradeNotification[] @relation("NewTier")
 
   createdAt DateTime @default(now())
 }
@@ -673,6 +676,7 @@ model Notification {
   postRejection PostRejectionNotification?
   questionRejection QuestionRejectionNotification?
   adminNotification           AdminNotification?
+  tierUpgradeNotification TierUpgradeNotification?
 
   @@index([recipientId, lastActivityAt(sort: Desc)]) 
   @@index([recipientId, groupKey]) 
@@ -863,6 +867,19 @@ model AdminNotificationReadState {
   adminNotification AdminNotification @relation(fields: [adminNotificationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, adminNotificationId])
+}
+
+model TierUpgradeNotification {
+  id String @id @default(uuid())
+
+  notificationId String @unique 
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  oldTierId Int
+  newTierId Int
+
+  oldTier Tier @relation("OldTier", fields: [oldTierId], references: [id])
+  newTier Tier @relation("NewTier", fields: [newTierId], references: [id])
 }
 
 //////////////////////////////////////////////////////

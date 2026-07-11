@@ -1735,6 +1735,89 @@ class NotificationReader {
             notification: result.notification,
         };
     }
+
+    async getTierUpgradeNotification(notificationId: string) {
+        const result = await prisma.$transaction(async (tx) => {
+            const notification = await tx.notification.findUnique({
+                where: { id: notificationId },
+                select: {
+                    id: true,
+                    type: true,
+                    isRead: true,
+                    createdAt: true,
+                    lastActivityAt: true,
+                    recipientId: true,
+                    tierUpgradeNotification: {
+                        select: {
+                            oldTier: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    badgeColor: true,
+                                    description: true,
+                                },
+                            },
+                            newTier: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    badgeColor: true,
+                                    description: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+
+            if (!notification || !notification.tierUpgradeNotification) {
+                return null;
+            }
+
+            const wasUnread = !notification.isRead;
+
+            if (wasUnread) {
+                await tx.notification.update({
+                    where: { id: notificationId },
+                    data: { isRead: true },
+                });
+            }
+
+            return {
+                recipientId: notification.recipientId,
+                shouldEmit: wasUnread,
+                notification: {
+                    id: notification.id,
+                    type: notification.type,
+                    isRead: true,
+                    createdAt: notification.createdAt,
+                    oldTier: notification.tierUpgradeNotification.oldTier,
+                    newTier: notification.tierUpgradeNotification.newTier,
+                },
+            };
+        });
+
+        if (!result) {
+            return null;
+        }
+
+        if (result.shouldEmit && result.recipientId) {
+            socketService.emitNotificationCount(
+                result.recipientId,
+                await notificationCount.getUnreadNotificationCount(
+                    result.recipientId,
+                ),
+            );
+        }
+
+        if (!result.notification) {
+            return null;
+        }
+
+        return {
+            notification: result.notification,
+        };
+    }
 }
 
 export default new NotificationReader();

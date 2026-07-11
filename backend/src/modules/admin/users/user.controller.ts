@@ -105,11 +105,13 @@ class UserAdminController {
     updateUserTier = async (req: Request, res: Response) => {
         const userId = req.params.userId as string;
         const tierId = req.body.tierId as number;
+        const adminId = req.user.sub;
 
         try {
             const result = await this.userAdminService.updateUserTier(
                 userId,
                 tierId,
+                adminId,
             );
 
             return res.status(200).json({
@@ -130,6 +132,13 @@ class UserAdminController {
                 return res.status(404).json({
                     status: 'fail',
                     message: 'Tier not found',
+                });
+            }
+
+            if (error.message === 'USER_ALREADY_HAS_THIS_TIER') {
+                return res.status(400).json({
+                    status: 'fail',
+                    message: 'User already has this tier',
                 });
             }
 
