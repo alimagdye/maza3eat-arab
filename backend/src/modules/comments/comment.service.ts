@@ -62,7 +62,7 @@ class CommentService {
         postId: string,
         cursor: string | null = null,
         userId: string | null = null,
-        role: 'USER' | 'ADMIN' | null = null,
+        role: 'USER' | 'ADMIN' | 'MODERATOR' | null = null,
         excludeCommentId: string | null = null,
     ) {
         const pageSize = 10;
@@ -150,7 +150,8 @@ class CommentService {
 
                 likedByMe,
                 permissions: {
-                    canDelete: isOwner || role === 'ADMIN',
+                    canDelete:
+                        isOwner || role === 'ADMIN' || role === 'MODERATOR',
                     canReport: !isOwner, // guest can report after sign in, so guest can also see report button
                 },
             };
@@ -167,7 +168,7 @@ class CommentService {
         commentId: string,
         postId: string,
         userId: string,
-        role: 'USER' | 'ADMIN',
+        role: 'USER' | 'ADMIN' | 'MODERATOR',
     ) {
         return await prisma.$transaction(async (tx) => {
             const comment = await tx.comment.findUnique({
@@ -184,7 +185,11 @@ class CommentService {
                 throw new Error('COMMENT_NOT_FOUND');
             }
 
-            if (comment.authorId !== userId && role !== 'ADMIN') {
+            if (
+                comment.authorId !== userId &&
+                role !== 'ADMIN' &&
+                role !== 'MODERATOR'
+            ) {
                 throw new Error('UNAUTHORIZED');
             }
 

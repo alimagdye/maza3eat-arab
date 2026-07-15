@@ -126,7 +126,7 @@ class NotificationService {
     async getNotificationById(
         userId: string,
         notificationId: string,
-        role: 'USER' | 'ADMIN',
+        role: 'USER' | 'ADMIN' | 'MODERATOR',
     ) {
         const notification = await prisma.notification.findUnique({
             where: { id: notificationId },

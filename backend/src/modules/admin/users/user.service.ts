@@ -111,7 +111,7 @@ class UserService {
             throw new Error('USER_NOT_FOUND');
         }
 
-        if (user.role === 'ADMIN') {
+        if (user.role === 'ADMIN' || user.role === 'MODERATOR') {
             throw new Error('CANNOT_BAN_ADMIN');
         }
 

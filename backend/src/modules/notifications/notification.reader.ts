@@ -20,7 +20,7 @@ class NotificationReader {
     async getAnswerReplyNotification(
         notificationId: string,
         userId: string,
-        role: 'USER' | 'ADMIN',
+        role: 'USER' | 'ADMIN' | 'MODERATOR',
     ) {
         const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
@@ -152,7 +152,10 @@ class NotificationReader {
                             notification.answerReply.answer.repliesCount,
                         myVote,
                         permissions: {
-                            canDelete: isAnswerOwner || role === 'ADMIN',
+                            canDelete:
+                                isAnswerOwner ||
+                                role === 'ADMIN' ||
+                                role === 'MODERATOR',
                             canReport: !isAnswerOwner,
                         },
                     },
@@ -169,7 +172,10 @@ class NotificationReader {
                                 .length > 0,
                         likedByMe,
                         permissions: {
-                            canDelete: isReplyOwner || role === 'ADMIN',
+                            canDelete:
+                                isReplyOwner ||
+                                role === 'ADMIN' ||
+                                role === 'MODERATOR',
                             canReport: !isReplyOwner,
                         },
                     },
@@ -204,7 +210,7 @@ class NotificationReader {
     async getCommentReplyNotification(
         notificationId: string,
         userId: string,
-        role: 'USER' | 'ADMIN',
+        role: 'USER' | 'ADMIN' | 'MODERATOR',
     ) {
         const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
@@ -331,7 +337,10 @@ class NotificationReader {
                         author: notification.commentReply.comment.author,
                         likedByMe: isCommentLikedByMe,
                         permissions: {
-                            canDelete: isCommentOwner || role === 'ADMIN',
+                            canDelete:
+                                isCommentOwner ||
+                                role === 'ADMIN' ||
+                                role === 'MODERATOR',
                             canReport: !isCommentOwner,
                         },
                     },
@@ -347,7 +356,10 @@ class NotificationReader {
                             notification.commentReply.reply.replies.length > 0,
                         likedByMe: isReplyLikedByMe,
                         permissions: {
-                            canDelete: isReplyOwner || role === 'ADMIN',
+                            canDelete:
+                                isReplyOwner ||
+                                role === 'ADMIN' ||
+                                role === 'MODERATOR',
                             canReport: !isReplyOwner,
                         },
                     },
@@ -378,7 +390,7 @@ class NotificationReader {
     async getAnswerReplyReplyNotification(
         notificationId: string,
         userId: string,
-        role: 'USER' | 'ADMIN',
+        role: 'USER' | 'ADMIN' | 'MODERATOR',
     ) {
         const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
@@ -520,7 +532,10 @@ class NotificationReader {
                                 .answerReplies.length > 0,
                         likedByMe: isParentReplyLikedByMe,
                         permissions: {
-                            canDelete: isParentReplyOwner || role === 'ADMIN',
+                            canDelete:
+                                isParentReplyOwner ||
+                                role === 'ADMIN' ||
+                                role === 'MODERATOR',
                             canReport: !isParentReplyOwner,
                         },
                     },
@@ -539,7 +554,10 @@ class NotificationReader {
                                 .length > 0,
                         likedByMe: isReplyLikedByMe,
                         permissions: {
-                            canDelete: isReplyOwner || role === 'ADMIN',
+                            canDelete:
+                                isReplyOwner ||
+                                role === 'ADMIN' ||
+                                role === 'MODERATOR',
                             canReport: !isReplyOwner,
                         },
                     },
@@ -570,7 +588,7 @@ class NotificationReader {
     async getCommentReplyReplyNotification(
         notificationId: string,
         userId: string,
-        role: 'USER' | 'ADMIN',
+        role: 'USER' | 'ADMIN' | 'MODERATOR',
     ) {
         const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
@@ -713,7 +731,10 @@ class NotificationReader {
                                 .length > 0,
                         likedByMe: isParentReplyLikedByMe,
                         permissions: {
-                            canDelete: isParentReplyOwner || role === 'ADMIN',
+                            canDelete:
+                                isParentReplyOwner ||
+                                role === 'ADMIN' ||
+                                role === 'MODERATOR',
                             canReport: !isParentReplyOwner,
                         },
                     },
@@ -732,7 +753,10 @@ class NotificationReader {
                                 .length > 0,
                         likedByMe: isReplyLikedByMe,
                         permissions: {
-                            canDelete: isReplyOwner || role === 'ADMIN',
+                            canDelete:
+                                isReplyOwner ||
+                                role === 'ADMIN' ||
+                                role === 'MODERATOR',
                             canReport: !isReplyOwner,
                         },
                     },
@@ -762,7 +786,7 @@ class NotificationReader {
     async getCommentNotification(
         notificationId: string,
         userId: string,
-        role: 'USER' | 'ADMIN',
+        role: 'USER' | 'ADMIN' | 'MODERATOR',
     ) {
         const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
@@ -911,7 +935,10 @@ class NotificationReader {
                         isLikedByMe,
 
                         permissions: {
-                            canDelete: isCommentOwner || role === 'ADMIN',
+                            canDelete:
+                                isCommentOwner ||
+                                role === 'ADMIN' ||
+                                role === 'MODERATOR',
                             canReport: !isCommentOwner,
                         },
                     },
@@ -944,7 +971,7 @@ class NotificationReader {
     async getAnswerNotification(
         notificationId: string,
         userId: string,
-        role: 'USER' | 'ADMIN',
+        role: 'USER' | 'ADMIN' | 'MODERATOR',
     ) {
         const result = await prisma.$transaction(async (tx) => {
             const notification = await tx.notification.findUnique({
@@ -1099,7 +1126,10 @@ class NotificationReader {
                         myVote,
 
                         permissions: {
-                            canDelete: isAnswerOwner || role === 'ADMIN',
+                            canDelete:
+                                isAnswerOwner ||
+                                role === 'ADMIN' ||
+                                role === 'MODERATOR',
                             canReport: !isAnswerOwner,
                         },
                     },

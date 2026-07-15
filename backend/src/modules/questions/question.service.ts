@@ -26,7 +26,7 @@ class QuestionService {
         content: string,
         tags: string[],
         userId: string,
-        role: 'ADMIN' | 'USER' | null = null,
+        role: 'ADMIN' | 'USER' | 'MODERATOR' | null = null,
     ) {
         if (!tags || tags.length === 0) {
             throw new Error('Must have at least 1 tag');
@@ -92,7 +92,9 @@ class QuestionService {
             // create question
             const question = await tx.question.create({
                 data: {
-                    ...(role === 'ADMIN' ? { status: 'APPROVED' } : {}),
+                    ...(role === 'ADMIN' || role === 'MODERATOR'
+                        ? { status: 'APPROVED' }
+                        : {}),
                     title: title.trim(),
                     titleNormalized,
                     content: content.trim(),
@@ -252,12 +254,14 @@ class QuestionService {
     async getQuestionById(
         questionId: string,
         userId: string | null = null,
-        role: 'ADMIN' | 'USER' | null = null,
+        role: 'ADMIN' | 'USER' | 'MODERATOR' | null = null,
     ) {
         const question = await prisma.question.findFirst({
             where: {
                 id: questionId,
-                ...(role === 'ADMIN' ? {} : { status: 'APPROVED' }),
+                ...(role === 'ADMIN' || role === 'MODERATOR'
+                    ? {}
+                    : { status: 'APPROVED' }),
             },
             select: {
                 id: true,
@@ -303,7 +307,9 @@ class QuestionService {
 
         return {
             id: question.id,
-            ...(role === 'ADMIN' && { status: question.status }),
+            ...(role === 'ADMIN' || role === 'MODERATOR'
+                ? { status: question.status }
+                : {}),
             title: question?.title,
             content: question?.content,
             publishDate: question?.createdAt,
@@ -324,12 +330,14 @@ class QuestionService {
     async deleteQuestionById(
         questionId: string,
         userId: string,
-        role: 'ADMIN' | 'USER' | null = null,
+        role: 'ADMIN' | 'USER' | 'MODERATOR' | null = null,
     ) {
         const question = await prisma.question.findFirst({
             where: {
                 id: questionId,
-                ...(role === 'ADMIN' ? {} : { authorId: userId }),
+                ...(role === 'ADMIN' || role === 'MODERATOR'
+                    ? {}
+                    : { authorId: userId }),
             },
             select: {
                 id: true,
