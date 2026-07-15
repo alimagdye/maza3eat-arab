@@ -24,7 +24,7 @@ class PostService {
             height: number;
             originalName: string;
         }[],
-        role: 'ADMIN' | 'USER' | null = null,
+        role: 'ADMIN' | 'USER' | 'MODERATOR' | null = null,
     ) {
         // -------------------------
         // 1. normalize base inputs
@@ -111,7 +111,9 @@ class PostService {
             // create post
             const post = await tx.post.create({
                 data: {
-                    ...(role === 'ADMIN' ? { status: 'APPROVED' } : {}),
+                    ...(role === 'ADMIN' || role === 'MODERATOR'
+                        ? { status: 'APPROVED' }
+                        : {}),
                     title: trimmedTitle,
                     titleNormalized,
                     content: trimmedContent,
@@ -166,11 +168,14 @@ class PostService {
     ) {
         const take = 10;
 
-        const role = scope === 'community' ? 'USER' : 'ADMIN';
-
         const where: any = {
             status: status.toUpperCase(),
-            author: { role },
+            author:
+                scope === 'community'
+                    ? { role: 'USER' }
+                    : {
+                          OR: [{ role: 'ADMIN' }, { role: 'MODERATOR' }],
+                      },
         };
 
         if (search && search.trim() !== '') {
@@ -308,12 +313,14 @@ class PostService {
     async getPostById(
         postId: string,
         userId: string | null = null,
-        role: 'ADMIN' | 'USER' | null = null,
+        role: 'ADMIN' | 'USER' | 'MODERATOR' | null = null,
     ) {
         const post = await prisma.post.findFirst({
             where: {
                 id: postId,
-                ...(role === 'ADMIN' ? {} : { status: 'APPROVED' }),
+                ...(role === 'ADMIN' || role === 'MODERATOR'
+                    ? {}
+                    : { status: 'APPROVED' }),
             },
             select: {
                 id: true,
@@ -364,7 +371,9 @@ class PostService {
         const likedByMe = userId && post.likes ? post.likes.length > 0 : false;
         return {
             id: post.id,
-            ...(role === 'ADMIN' && { status: post.status }),
+            ...(role === 'ADMIN' || role === 'MODERATOR'
+                ? { status: post.status }
+                : {}),
             title: post?.title,
             content: post?.content,
             publishDate: post?.createdAt,
@@ -386,12 +395,14 @@ class PostService {
     async deletePostById(
         postId: string,
         userId: string,
-        role: 'ADMIN' | 'USER' | null = null,
+        role: 'ADMIN' | 'USER' | 'MODERATOR' | null = null,
     ) {
         const post = await prisma.post.findFirst({
             where: {
                 id: postId,
-                ...(role === 'ADMIN' ? {} : { authorId: userId }),
+                ...(role === 'ADMIN' || role === 'MODERATOR'
+                    ? {}
+                    : { authorId: userId }),
             },
             select: {
                 id: true,

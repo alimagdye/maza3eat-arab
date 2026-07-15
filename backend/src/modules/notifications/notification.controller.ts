@@ -22,7 +22,7 @@ class NotificationController {
 
     getNotificationById = async (req: Request, res: Response) => {
         const userId = req.user.sub as string;
-        const role = req.user.role as 'USER' | 'ADMIN';
+        const role = req.user.role as 'USER' | 'ADMIN' | 'MODERATOR';
 
         const notificationId = req.params.id as string;
         try {

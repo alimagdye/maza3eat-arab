@@ -230,7 +230,11 @@ class ReplyService {
         return result.reply;
     }
 
-    async deleteReply(replyId: string, userId: string, role: 'USER' | 'ADMIN') {
+    async deleteReply(
+        replyId: string,
+        userId: string,
+        role: 'USER' | 'MODERATOR' | 'ADMIN',
+    ) {
         return await prisma.$transaction(async (tx) => {
             const reply = await tx.answerReply.findUnique({
                 where: { id: replyId },
@@ -251,7 +255,11 @@ class ReplyService {
                 throw new Error('REPLY_NOT_FOUND');
             }
 
-            if (reply.authorId !== userId && role !== 'ADMIN') {
+            if (
+                reply.authorId !== userId &&
+                role !== 'ADMIN' &&
+                role !== 'MODERATOR'
+            ) {
                 throw new Error('FORBIDDEN');
             }
 
@@ -292,7 +300,7 @@ class ReplyService {
         cursor: string | null = null,
         userId: string | null = null,
         excludeReplyId: string | null = null,
-        role: 'USER' | 'ADMIN' | null = null,
+        role: 'USER' | 'ADMIN' | 'MODERATOR' | null = null,
     ) {
         const pageSize = 5;
 
@@ -383,7 +391,8 @@ class ReplyService {
                 hasReplies: reply.answerReplies.length > 0,
                 likedByMe,
                 permissions: {
-                    canDelete: isOwner || role === 'ADMIN',
+                    canDelete:
+                        isOwner || role === 'ADMIN' || role === 'MODERATOR',
                     canReport: !isOwner,
                 },
             };
@@ -403,7 +412,7 @@ class ReplyService {
         cursor: string | null = null,
         userId: string | null = null,
         excludeReplyId: string | null = null,
-        role: 'USER' | 'ADMIN' | null = null,
+        role: 'USER' | 'ADMIN' | 'MODERATOR' | null = null,
     ) {
         const pageSize = 5;
 
@@ -524,7 +533,8 @@ class ReplyService {
                 hasReplies: reply.answerReplies.length > 0,
                 likedByMe,
                 permissions: {
-                    canDelete: isOwner || role === 'ADMIN',
+                    canDelete:
+                        isOwner || role === 'ADMIN' || role === 'MODERATOR',
                     canReport: !isOwner,
                 },
             };
@@ -545,7 +555,10 @@ class ReplyService {
                 likedByMe:
                     userId && parent.likes ? parent.likes.length > 0 : false,
                 permissions: {
-                    canDelete: isParentOwner || role === 'ADMIN',
+                    canDelete:
+                        isParentOwner ||
+                        role === 'ADMIN' ||
+                        role === 'MODERATOR',
                     canReport: !isParentOwner,
                 },
             },

@@ -63,7 +63,7 @@ class AnswerService {
         questionId: string,
         cursor: string | null = null,
         userId: string | null = null,
-        role: 'USER' | 'ADMIN' | null = null,
+        role: 'USER' | 'ADMIN' | 'MODERATOR' | null = null,
         excludeAnswerId: string | null = null,
     ) {
         const pageSize = 10;
@@ -154,7 +154,8 @@ class AnswerService {
 
                 myVote,
                 permissions: {
-                    canDelete: isOwner || role === 'ADMIN',
+                    canDelete:
+                        isOwner || role === 'ADMIN' || role === 'MODERATOR',
                     canReport: !isOwner, // guest can report after sign in, so guest can also see report button
                 },
             };
@@ -171,7 +172,7 @@ class AnswerService {
         answerId: string,
         questionId: string,
         userId: string,
-        role: 'USER' | 'ADMIN',
+        role: 'USER' | 'ADMIN' | 'MODERATOR',
     ) {
         return await prisma.$transaction(async (tx) => {
             const answer = await tx.answer.findUnique({
@@ -188,7 +189,11 @@ class AnswerService {
                 throw new Error('answer_NOT_FOUND');
             }
 
-            if (answer.authorId !== userId && role !== 'ADMIN') {
+            if (
+                answer.authorId !== userId &&
+                role !== 'ADMIN' &&
+                role !== 'MODERATOR'
+            ) {
                 throw new Error('UNAUTHORIZED');
             }
 
