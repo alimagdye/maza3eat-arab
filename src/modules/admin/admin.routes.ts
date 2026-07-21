@@ -11,6 +11,7 @@ import AdRoutes from './ads/ad.routes.js';
 import ReportRoutes from './reports/report.routes.js';
 import announcementRoutes from './notification/announcement.routes.js';
 import moderatorRoutes from './moderators/moderator.routes.js';
+import statisticsRoutes from './statistics/statistic.routes.js';
 
 const router = Router();
 
@@ -22,6 +23,11 @@ router.use('/moderators', requireRole([UserRole.ADMIN]), moderatorRoutes);
 router.use('/ads', requireRole([UserRole.ADMIN]), AdRoutes);
 
 // admin and moderator routes
+router.use(
+    '/statistics',
+    requireRole([UserRole.ADMIN, UserRole.MODERATOR]),
+    statisticsRoutes,
+);
 router.use(
     '/posts',
     requireRole([UserRole.ADMIN, UserRole.MODERATOR]),

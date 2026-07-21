@@ -10,7 +10,7 @@ class ReportController {
 
         try {
             const reports = await this.reportService.getReports(cursor);
-            res.status(201).json({
+            res.status(200).json({
                 status: 'success',
                 data: reports,
             });
