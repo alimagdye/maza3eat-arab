@@ -10,7 +10,7 @@ const contactRequestRateLimiter = {
         'Too many contact request creation requests. Please try again later.',
     ),
     respondToContactRequestLimiter: createLimiter(
-        30,
+        50,
         'Too many contact request response requests. Please try again later.',
     ),
     getContactRequestByIdLimiter: createLimiter(

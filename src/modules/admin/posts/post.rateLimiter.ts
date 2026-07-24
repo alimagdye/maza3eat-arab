@@ -2,7 +2,7 @@ import { createLimiter } from '../../../middlewares/rateLimit/rateLimiter.factor
 
 const postRateLimiter = {
     createPostLimiter: createLimiter(
-        30,
+        40,
         'Too many post creation requests. Please try again later.',
     ),
     getPostsLimiter: createLimiter(
@@ -14,7 +14,7 @@ const postRateLimiter = {
         'Too many requests. Please try again later.',
     ),
     approveOrRejectPostLimiter: createLimiter(
-        60,
+        80,
         'Too many approve/reject requests. Please try again later.',
     ),
     deletePostByIdLimiter: createLimiter(

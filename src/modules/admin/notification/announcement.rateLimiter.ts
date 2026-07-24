@@ -2,7 +2,7 @@ import { createLimiter } from '../../../middlewares/rateLimit/rateLimiter.factor
 
 const announcementRateLimiter = {
     createAnnouncementLimiter: createLimiter(
-        3,
+        5,
         'Too many announcement creation requests. Please try again later.',
     ),
     getAnnouncementsLimiter: createLimiter(

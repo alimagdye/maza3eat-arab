@@ -5,17 +5,10 @@ const tierRateLimiter = {
         400,
         'Too many search requests. Please try again later.',
     ),
-    createTierLimiter: createLimiter(
-        100,
-        'Too many create requests. Please try again later.',
-    ),
+
     updateTierLimiter: createLimiter(
-        100,
+        50,
         'Too many update requests. Please try again later.',
-    ),
-    deleteTierLimiter: createLimiter(
-        100,
-        'Too many delete requests. Please try again later.',
     ),
 };
 

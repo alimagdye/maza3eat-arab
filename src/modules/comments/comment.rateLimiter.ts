@@ -9,7 +9,7 @@ const commentRateLimiter = {
         'Too many requests from this IP, please try again later.',
     ),
     createCommentLimiter: createLimiter(
-        20,
+        25,
         'Too many comments created from this user, please try again later.',
     ),
     deleteCommentLimiter: createLimiter(
