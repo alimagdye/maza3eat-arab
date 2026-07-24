@@ -2,17 +2,17 @@ import { createIPLimiter } from '../../middlewares/rateLimit/rateLimiter.factory
 
 const authRateLimiter = {
     oauthRateLimiter: createIPLimiter(
-        10,
+        20,
         'Too many OAuth requests. Please try again later.',
     ),
 
     logoutRateLimiter: createIPLimiter(
-        5,
+        10,
         'Too many logout requests. Please try again later.',
     ),
 
     refreshTokenRateLimiter: createIPLimiter(
-        10,
+        15,
         'Too many refresh token requests. Please try again later.',
     ),
 };

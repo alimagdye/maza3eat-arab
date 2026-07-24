@@ -6,11 +6,11 @@ const userRateLimiter = {
         'Too many search requests. Please try again later.',
     ),
     banOrUnbanUserLimiter: createLimiter(
-        60,
+        100,
         'Too many approve/reject requests. Please try again later.',
     ),
     updateUserTierLimiter: createLimiter(
-        60,
+        100,
         'Too many update tier requests. Please try again later.',
     ),
 };

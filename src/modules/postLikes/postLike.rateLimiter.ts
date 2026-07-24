@@ -9,17 +9,17 @@ const likeRateLimiter = {
         'Too many like/unlike attempts. Please try again later.',
     ),
     likeOrUnlikePostLimiter: createLimiter(
-        10,
+        100,
         'Too many like/unlike attempts for this post.',
         'postId',
     ),
     likeOrUnlikeCommentLimiter: createLimiter(
-        10,
+        100,
         'Too many like/unlike attempts for this comment.',
         'commentId',
     ),
     likeOrUnlikeReplyLimiter: createLimiter(
-        10,
+        100,
         'Too many like/unlike attempts for this reply.',
         'replyId',
     ),

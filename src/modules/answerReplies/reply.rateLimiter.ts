@@ -9,11 +9,11 @@ export default {
         'Too many requests from this IP. Please try again later.',
     ),
     replyToAnswerLimiter: createLimiter(
-        20,
+        25,
         'Too many reply creation requests. Please try again later.',
     ),
     replyToReplyLimiter: createLimiter(
-        15,
+        20,
         'Too many reply creation requests. Please try again later.',
     ),
     deleteReplyLimiter: createLimiter(

@@ -5,11 +5,11 @@ import {
 
 const notificationRateLimiter = {
     preAuthLimiter: createIPLimiter(
-        150,
+        200,
         'Too many requests. Please try again later.',
     ),
     notificationLimiter: createLimiter(
-        100,
+        150,
         'Too many requests. Please try again later.',
     ),
 };

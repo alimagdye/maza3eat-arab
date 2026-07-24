@@ -6,11 +6,11 @@ const moderatorRateLimiter = {
         'Too many requests. Please try again later.',
     ),
     promoteToModeratorLimiter: createLimiter(
-        20,
+        40,
         'Too many promote requests. Please try again later.',
     ),
     demoteModeratorLimiter: createLimiter(
-        20,
+        30,
         'Too many demote requests. Please try again later.',
     ),
 };
