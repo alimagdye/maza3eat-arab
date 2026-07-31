@@ -221,7 +221,7 @@ class PostService {
         const posts = await prisma.post.findMany({
             where,
             orderBy,
-            take,
+            take: take + 1,
 
             ...(cursor && {
                 skip: 1,
@@ -272,7 +272,8 @@ class PostService {
             },
         });
 
-        const hasMore = posts.length === take;
+        const hasMore = posts.length > take;
+        if (hasMore) posts.pop();
 
         const nextCursor = hasMore ? posts[posts.length - 1].id : null;
 
@@ -446,6 +447,9 @@ class PostService {
                             in: tagIds,
                         },
                         posts: {
+                            none: {},
+                        },
+                        questions: {
                             none: {},
                         },
                     },
