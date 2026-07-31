@@ -26,27 +26,33 @@ class ReplyService {
                 throw new Error('COMMENT_NOT_FOUND');
             }
 
-            const lastRootReply = await tx.reply.findFirst({
+            const siblings = await tx.reply.findMany({
                 where: {
                     commentId,
                     parentReplyId: null,
-                },
-                orderBy: {
-                    path: 'desc',
                 },
                 select: {
                     path: true,
                 },
             });
 
-            let segment = '1';
+            // segments are base36 and unpadded, so the highest sibling has to be
+            // found numerically — lexicographic order puts 'Z' above '10'
+            let maxSegment = 0;
 
-            if (lastRootReply) {
-                const parts = lastRootReply.path.split('.');
+            for (const sibling of siblings) {
+                const parts = sibling.path.split('.');
                 const lastSegment = parts[parts.length - 1];
+                const number = parseInt(lastSegment, 36);
 
-                segment = replyUtils.nextSegment(lastSegment);
+                if (Number.isFinite(number) && number > maxSegment) {
+                    maxSegment = number;
+                }
             }
+
+            const segment = maxSegment
+                ? replyUtils.nextSegment(maxSegment.toString(36))
+                : '1';
 
             const path = commentId + '.' + segment;
 
@@ -148,26 +154,32 @@ class ReplyService {
                 throw new Error('MAX_DEPTH_REACHED');
             }
 
-            const lastChild = await tx.reply.findFirst({
+            const children = await tx.reply.findMany({
                 where: {
                     parentReplyId: replyId,
-                },
-                orderBy: {
-                    path: 'desc',
                 },
                 select: {
                     path: true,
                 },
             });
 
-            let segment = '1';
+            // segments are base36 and unpadded, so the highest sibling has to be
+            // found numerically — lexicographic order puts 'Z' above '10'
+            let maxSegment = 0;
 
-            if (lastChild) {
-                const parts = lastChild.path.split('.');
+            for (const child of children) {
+                const parts = child.path.split('.');
                 const lastSegment = parts[parts.length - 1];
+                const number = parseInt(lastSegment, 36);
 
-                segment = replyUtils.nextSegment(lastSegment);
+                if (Number.isFinite(number) && number > maxSegment) {
+                    maxSegment = number;
+                }
             }
+
+            const segment = maxSegment
+                ? replyUtils.nextSegment(maxSegment.toString(36))
+                : '1';
 
             const path = parent.path + '.' + segment;
 
@@ -270,9 +282,13 @@ class ReplyService {
 
             const { count } = await tx.reply.deleteMany({
                 where: {
-                    path: {
-                        startsWith: reply.path,
-                    },
+                    commentId: reply.commentId,
+                    OR: [
+                        { id: reply.id },
+                        // anchor on the separator so sibling '<path>0' is not
+                        // matched as a descendant of '<path>'
+                        { path: { startsWith: reply.path + '.' } },
+                    ],
                 },
             });
 
