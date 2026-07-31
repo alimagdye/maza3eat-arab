@@ -52,8 +52,6 @@ class AdminPostService {
                 throw new Error('REJECTION_REASON_REQUIRED');
             }
 
-            await this.deletePostById(postId, userId, 'ADMIN');
-
             // create audit log here
             // await tx.auditLog.create(...)
 
@@ -65,6 +63,12 @@ class AdminPostService {
                 recipientId: post.authorId,
             };
         });
+
+        // Runs its own transaction + Cloudinary calls, so it must stay outside
+        // the interactive transaction above.
+        if (action === 'reject') {
+            await this.deletePostById(postId, userId, 'ADMIN');
+        }
 
         if (action === 'approve') {
             await this.notificationService.createPostOrQuestionApprovalNotification(
