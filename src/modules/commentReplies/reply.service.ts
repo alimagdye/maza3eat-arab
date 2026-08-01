@@ -36,25 +36,14 @@ class ReplyService {
                 },
             });
 
-            // segments are base36 and unpadded, so the highest sibling has to be
-            // found numerically — lexicographic order puts 'Z' above '10'
-            let maxSegment = 0;
+            let segment = replyUtils.nextSegment();
 
-            for (const sibling of siblings) {
-                const parts = sibling.path.split('.');
-                const lastSegment = parts[parts.length - 1];
-                const number = parseInt(lastSegment, 36);
-
-                if (Number.isFinite(number) && number > maxSegment) {
-                    maxSegment = number;
-                }
+            if (lastRootReply) {
+                const parts = lastRootReply.path.split('.');
+                segment = replyUtils.nextSegment(parts.at(-1));
             }
 
-            const segment = maxSegment
-                ? replyUtils.nextSegment(maxSegment.toString(36))
-                : '1';
-
-            const path = commentId + '.' + segment;
+            const path = `${comment.id}.${segment}`;
 
             const reply = await tx.reply.create({
                 data: {
@@ -163,25 +152,14 @@ class ReplyService {
                 },
             });
 
-            // segments are base36 and unpadded, so the highest sibling has to be
-            // found numerically — lexicographic order puts 'Z' above '10'
-            let maxSegment = 0;
+            let segment = replyUtils.nextSegment();
 
-            for (const child of children) {
-                const parts = child.path.split('.');
-                const lastSegment = parts[parts.length - 1];
-                const number = parseInt(lastSegment, 36);
-
-                if (Number.isFinite(number) && number > maxSegment) {
-                    maxSegment = number;
-                }
+            if (lastChild) {
+                const parts = lastChild.path.split('.');
+                segment = replyUtils.nextSegment(parts.at(-1));
             }
 
-            const segment = maxSegment
-                ? replyUtils.nextSegment(maxSegment.toString(36))
-                : '1';
-
-            const path = parent.path + '.' + segment;
+            const path = `${parent.path}.${segment}`;
 
             const reply = await tx.reply.create({
                 data: {
@@ -284,10 +262,14 @@ class ReplyService {
                 where: {
                     commentId: reply.commentId,
                     OR: [
-                        { id: reply.id },
-                        // anchor on the separator so sibling '<path>0' is not
-                        // matched as a descendant of '<path>'
-                        { path: { startsWith: reply.path + '.' } },
+                        {
+                            id: reply.id,
+                        },
+                        {
+                            path: {
+                                startsWith: `${reply.path}.`,
+                            },
+                        },
                     ],
                 },
             });

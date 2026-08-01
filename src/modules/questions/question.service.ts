@@ -342,6 +342,7 @@ class QuestionService {
             },
             select: {
                 id: true,
+                status: true,
 
                 tags: {
                     select: {
@@ -351,7 +352,7 @@ class QuestionService {
             },
         });
 
-        if (!question) {
+        if (!question || (question.status === 'PENDING' && role === 'USER')) {
             throw new Error('question_NOT_FOUND');
         }
 

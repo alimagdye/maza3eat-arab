@@ -22,6 +22,7 @@ const postValidation: {
         body('tags')
             .toArray()
             .isArray({ min: 1, max: 10 })
+            .toArray()
             .withMessage('Tags must be min 1 and max 10'),
         body('tags.*')
             .isString()
