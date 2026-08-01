@@ -38,16 +38,14 @@ class ReplyService {
                 },
             });
 
-            let segment = '1';
+            let segment = replyUtils.nextSegment();
 
             if (lastRootReply) {
                 const parts = lastRootReply.path.split('.');
-                const lastSegment = parts[parts.length - 1];
-
-                segment = replyUtils.nextSegment(lastSegment);
+                segment = replyUtils.nextSegment(parts.at(-1));
             }
 
-            const path = answer.id + '.' + segment;
+            const path = `${answer.id}.${segment}`;
 
             const reply = await tx.answerReply.create({
                 data: {
@@ -159,16 +157,14 @@ class ReplyService {
                 },
             });
 
-            let segment = '1';
+            let segment = replyUtils.nextSegment();
 
             if (lastChild) {
                 const parts = lastChild.path.split('.');
-                const lastSegment = parts[parts.length - 1];
-
-                segment = replyUtils.nextSegment(lastSegment);
+                segment = replyUtils.nextSegment(parts.at(-1));
             }
 
-            const path = parent.path + '.' + segment;
+            const path = `${parent.path}.${segment}`;
 
             const reply = await tx.answerReply.create({
                 data: {
@@ -269,9 +265,17 @@ class ReplyService {
 
             const { count } = await tx.answerReply.deleteMany({
                 where: {
-                    path: {
-                        startsWith: reply.path,
-                    },
+                    answerId: reply.answerId,
+                    OR: [
+                        {
+                            id: reply.id,
+                        },
+                        {
+                            path: {
+                                startsWith: `${reply.path}.`,
+                            },
+                        },
+                    ],
                 },
             });
 

@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import { prisma } from './lib/client.js';
 import { initSocket } from './sockets/socket.server.js';
 import { getIO } from './sockets/socket.server.js';
+import { corsOptions } from './config/cors.js';
 // -----------------------------
 // Initialize
 // -----------------------------
@@ -24,12 +25,7 @@ import globalRateLimiter from './middlewares/rateLimit/globalRateLimiter.js';
 
 app.set('trust proxy', 1);
 app.use(helmet());
-app.use(
-    cors({
-        origin: process.env.CLIENT_URL || '*',
-        credentials: true,
-    }),
-);
+app.use(cors(corsOptions));
 app.use(globalRateLimiter);
 app.use(cookieParser());
 app.use(express.json({ limit: '100kb' }));
@@ -155,7 +151,8 @@ startServer();
 process.on('SIGINT', async () => {
     console.log('🛑 SIGINT received. Shutting down...');
     try {
-        getIO().close();
+        const io = getIO();
+        await io.close();
     } catch {}
     await prisma.$disconnect();
     process.exit(0);
@@ -164,7 +161,8 @@ process.on('SIGINT', async () => {
 process.on('SIGTERM', async () => {
     console.log('🛑 SIGTERM received. Shutting down...');
     try {
-        getIO().close();
+        const io = getIO();
+        await io.close();
     } catch {}
     await prisma.$disconnect();
     process.exit(0);
