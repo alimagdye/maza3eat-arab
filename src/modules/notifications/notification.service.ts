@@ -135,6 +135,7 @@ class NotificationService {
                 recipientId: true,
             },
         });
+        console.log('do we come before this recipient check');
 
         if (
             !notification ||

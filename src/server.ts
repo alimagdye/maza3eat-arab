@@ -8,7 +8,6 @@ import cookieParser from 'cookie-parser';
 import { prisma } from './lib/client.js';
 import { initSocket } from './sockets/socket.server.js';
 import { getIO } from './sockets/socket.server.js';
-import { corsOptions } from './config/cors.js';
 // -----------------------------
 // Initialize
 // -----------------------------
@@ -18,18 +17,6 @@ const server: http.Server = http.createServer(app);
 const PORT: number = Number(process.env.PORT || '3000');
 const NODE_ENV: string = process.env.NODE_ENV || 'development';
 
-// Credentialed CORS cannot use a wildcard origin, so fail closed instead of
-// falling back to '*' when the allowed origins are not configured.
-if (!process.env.CLIENT_URL) {
-    console.error(
-        '❌ FATAL: CLIENT_URL is not set. Credentialed CORS requires an explicit origin (comma separated for multiple).',
-    );
-    process.exit(1);
-}
-const ALLOWED_ORIGINS: string[] = process.env.CLIENT_URL.split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
 // -----------------------------
 // Global Middlewares
 // -----------------------------
@@ -37,7 +24,12 @@ import globalRateLimiter from './middlewares/rateLimit/globalRateLimiter.js';
 
 app.set('trust proxy', 1);
 app.use(helmet());
-app.use(cors(corsOptions));
+app.use(
+    cors({
+        origin: process.env.CLIENT_URL || '*',
+        credentials: true,
+    }),
+);
 app.use(globalRateLimiter);
 app.use(cookieParser());
 app.use(express.json({ limit: '100kb' }));
@@ -163,8 +155,7 @@ startServer();
 process.on('SIGINT', async () => {
     console.log('🛑 SIGINT received. Shutting down...');
     try {
-        const io = getIO();
-        await io.close();
+        getIO().close();
     } catch {}
     await prisma.$disconnect();
     process.exit(0);
@@ -173,8 +164,7 @@ process.on('SIGINT', async () => {
 process.on('SIGTERM', async () => {
     console.log('🛑 SIGTERM received. Shutting down...');
     try {
-        const io = getIO();
-        await io.close();
+        getIO().close();
     } catch {}
     await prisma.$disconnect();
     process.exit(0);

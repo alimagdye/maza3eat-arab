@@ -221,7 +221,7 @@ class PostService {
         const posts = await prisma.post.findMany({
             where,
             orderBy,
-            take: take + 1,
+            take,
 
             ...(cursor && {
                 skip: 1,
@@ -272,8 +272,7 @@ class PostService {
             },
         });
 
-        const hasMore = posts.length > take;
-        if (hasMore) posts.pop();
+        const hasMore = posts.length === take;
 
         const nextCursor = hasMore ? posts[posts.length - 1].id : null;
 
@@ -407,7 +406,6 @@ class PostService {
             },
             select: {
                 id: true,
-                status: true,
 
                 images: {
                     select: {
@@ -423,7 +421,7 @@ class PostService {
             },
         });
 
-        if (!post || (post.status === 'PENDING' && role === 'USER')) {
+        if (!post) {
             throw new Error('POST_NOT_FOUND');
         }
 
@@ -448,9 +446,6 @@ class PostService {
                             in: tagIds,
                         },
                         posts: {
-                            none: {},
-                        },
-                        questions: {
                             none: {},
                         },
                     },

@@ -171,7 +171,7 @@ class QuestionService {
         let orderBy: any;
         if (sort === 'popular') {
             orderBy = [
-                { answersCount: 'desc' as const },
+                { commentsCount: 'desc' as const },
                 { id: 'desc' as const },
             ];
         } else if (sort === 'latest') {
@@ -183,7 +183,7 @@ class QuestionService {
         const questions = await prisma.question.findMany({
             where,
             orderBy,
-            take: take + 1,
+            take,
 
             ...(cursor && {
                 skip: 1,
@@ -219,8 +219,7 @@ class QuestionService {
             },
         });
 
-        const hasMore = questions.length > take;
-        if (hasMore) questions.pop();
+        const hasMore = questions.length === take;
 
         const nextCursor = hasMore ? questions[questions.length - 1].id : null;
 
@@ -342,7 +341,6 @@ class QuestionService {
             },
             select: {
                 id: true,
-                status: true,
 
                 tags: {
                     select: {
@@ -352,7 +350,7 @@ class QuestionService {
             },
         });
 
-        if (!question || (question.status === 'PENDING' && role === 'USER')) {
+        if (!question) {
             throw new Error('question_NOT_FOUND');
         }
 
@@ -372,9 +370,6 @@ class QuestionService {
                             in: tagIds,
                         },
                         questions: {
-                            none: {},
-                        },
-                        posts: {
                             none: {},
                         },
                     },

@@ -1,10 +1,10 @@
 class ReplyUtils {
     nextSegment(segment?: string) {
-        const WIDTH = 6;
+        if (!segment) return '1';
 
-        const next = segment ? parseInt(segment, 36) + 1 : 1;
+        const number = parseInt(segment, 36);
 
-        return next.toString(36).toUpperCase().padStart(WIDTH, '0');
+        return (number + 1).toString(36).toUpperCase();
     }
 }
 
