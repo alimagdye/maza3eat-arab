@@ -26,13 +26,10 @@ class ReplyService {
                 throw new Error('COMMENT_NOT_FOUND');
             }
 
-            const lastRootReply = await tx.reply.findFirst({
+            const siblings = await tx.reply.findMany({
                 where: {
                     commentId,
                     parentReplyId: null,
-                },
-                orderBy: {
-                    path: 'desc',
                 },
                 select: {
                     path: true,
@@ -146,12 +143,9 @@ class ReplyService {
                 throw new Error('MAX_DEPTH_REACHED');
             }
 
-            const lastChild = await tx.reply.findFirst({
+            const children = await tx.reply.findMany({
                 where: {
                     parentReplyId: replyId,
-                },
-                orderBy: {
-                    path: 'desc',
                 },
                 select: {
                     path: true,

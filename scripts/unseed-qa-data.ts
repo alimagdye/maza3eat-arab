@@ -10,14 +10,7 @@ import { prisma } from '../src/lib/client.js';
 
 async function main() {
     const users = await prisma.user.findMany({
-        where: {
-            email: {
-                in: [
-                    'seed-qa-sara@maza3eat.local',
-                    'seed-qa-omar@maza3eat.local',
-                ],
-            },
-        },
+        where: { email: { in: ['seed-qa-sara@maza3eat.local', 'seed-qa-omar@maza3eat.local'] } },
         select: { id: true, email: true },
     });
 
@@ -27,26 +20,16 @@ async function main() {
         select: { id: true },
     });
     if (ads.length) {
-        await prisma.homeAd.deleteMany({
-            where: { adId: { in: ads.map((a) => a.id) } },
-        });
-        await prisma.ad.deleteMany({
-            where: { id: { in: ads.map((a) => a.id) } },
-        });
+        await prisma.homeAd.deleteMany({ where: { adId: { in: ads.map((a) => a.id) } } });
+        await prisma.ad.deleteMany({ where: { id: { in: ads.map((a) => a.id) } } });
     }
 
     // Anything still marked but authored by a non-seed user.
-    await prisma.post.deleteMany({
-        where: { title: { startsWith: '[SEED-QA]' } },
-    });
-    await prisma.question.deleteMany({
-        where: { title: { startsWith: '[SEED-QA]' } },
-    });
+    await prisma.post.deleteMany({ where: { title: { startsWith: '[SEED-QA]' } } });
+    await prisma.question.deleteMany({ where: { title: { startsWith: '[SEED-QA]' } } });
 
     if (users.length) {
-        await prisma.user.deleteMany({
-            where: { id: { in: users.map((u) => u.id) } },
-        });
+        await prisma.user.deleteMany({ where: { id: { in: users.map((u) => u.id) } } });
     }
 
     // Orphan tags created only by the seed.
@@ -60,10 +43,7 @@ async function main() {
         }
     }
 
-    console.log(
-        'removed seed users:',
-        users.map((u) => u.email).join(', ') || 'none',
-    );
+    console.log('removed seed users:', users.map((u) => u.email).join(', ') || 'none');
     console.log('current totals:', {
         users: await prisma.user.count(),
         posts: await prisma.post.count(),

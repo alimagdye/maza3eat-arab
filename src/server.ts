@@ -18,6 +18,18 @@ const server: http.Server = http.createServer(app);
 const PORT: number = Number(process.env.PORT || '3000');
 const NODE_ENV: string = process.env.NODE_ENV || 'development';
 
+// Credentialed CORS cannot use a wildcard origin, so fail closed instead of
+// falling back to '*' when the allowed origins are not configured.
+if (!process.env.CLIENT_URL) {
+    console.error(
+        '❌ FATAL: CLIENT_URL is not set. Credentialed CORS requires an explicit origin (comma separated for multiple).',
+    );
+    process.exit(1);
+}
+const ALLOWED_ORIGINS: string[] = process.env.CLIENT_URL.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
 // -----------------------------
 // Global Middlewares
 // -----------------------------

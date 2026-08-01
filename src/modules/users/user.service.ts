@@ -55,10 +55,15 @@ class UserService {
         authUserId: string | null = null,
     ) {
         const take = 10;
+        const isOwner = authUserId === userId;
+
         const posts = await prisma.post.findMany({
-            where: { authorId: userId },
+            where: {
+                authorId: userId,
+                ...(isOwner ? {} : { status: 'APPROVED' as const }),
+            },
             orderBy: { createdAt: 'desc' },
-            take,
+            take: take + 1,
             ...(cursor && {
                 skip: 1,
                 cursor: { id: cursor },
@@ -109,9 +114,8 @@ class UserService {
             },
         });
 
-        const isOwner = authUserId === userId;
-
-        const hasMore = posts.length === take;
+        const hasMore = posts.length > take;
+        if (hasMore) posts.pop();
 
         const nextCursor = hasMore ? posts[posts.length - 1].id : null;
 
@@ -153,10 +157,15 @@ class UserService {
         authUserId: string | null = null,
     ) {
         const take = 10;
+        const isOwner = authUserId === userId;
+
         const questions = await prisma.question.findMany({
-            where: { authorId: userId },
+            where: {
+                authorId: userId,
+                ...(isOwner ? {} : { status: 'APPROVED' as const }),
+            },
             orderBy: { createdAt: 'desc' },
-            take,
+            take: take + 1,
             ...(cursor && {
                 skip: 1,
                 cursor: { id: cursor },
@@ -189,9 +198,8 @@ class UserService {
             },
         });
 
-        const isOwner = authUserId === userId;
-
-        const hasMore = questions.length === take;
+        const hasMore = questions.length > take;
+        if (hasMore) questions.pop();
 
         const nextCursor = hasMore ? questions[questions.length - 1].id : null;
 

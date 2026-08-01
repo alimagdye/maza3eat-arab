@@ -47,12 +47,7 @@ async function backfillTags(): Promise<Drift[]> {
             continue;
         }
 
-        drift.push({
-            id: tag.id,
-            from: tag.normalizedName,
-            to: next,
-            label: 'tag',
-        });
+        drift.push({ id: tag.id, from: tag.normalizedName, to: next, label: 'tag' });
         if (APPLY) {
             await prisma.tag.update({
                 where: { id: tag.id },
@@ -63,7 +58,9 @@ async function backfillTags(): Promise<Drift[]> {
     return drift;
 }
 
-async function backfillTitles(model: 'post' | 'question'): Promise<Drift[]> {
+async function backfillTitles(
+    model: 'post' | 'question',
+): Promise<Drift[]> {
     const drift: Drift[] = [];
     let cursor: string | null = null;
 
@@ -105,11 +102,7 @@ async function backfillTitles(model: 'post' | 'question'): Promise<Drift[]> {
 }
 
 async function main() {
-    console.log(
-        APPLY
-            ? 'APPLY mode — writing changes\n'
-            : 'DRY RUN — pass --apply to write\n',
-    );
+    console.log(APPLY ? 'APPLY mode — writing changes\n' : 'DRY RUN — pass --apply to write\n');
 
     const tagDrift = await backfillTags();
     console.log(`tags:      ${tagDrift.length} row(s) drifted`);
@@ -124,15 +117,11 @@ async function main() {
     if (all.length) {
         console.log('\nfirst 20 changes:');
         for (const d of all.slice(0, 20)) {
-            console.log(
-                `  [${d.label}] ${d.id}\n      "${d.from}"\n   -> "${d.to}"`,
-            );
+            console.log(`  [${d.label}] ${d.id}\n      "${d.from}"\n   -> "${d.to}"`);
         }
         if (!APPLY) console.log('\nnothing written — re-run with --apply');
     } else {
-        console.log(
-            '\nno drift: every stored value already matches the current normaliser',
-        );
+        console.log('\nno drift: every stored value already matches the current normaliser');
     }
 }
 

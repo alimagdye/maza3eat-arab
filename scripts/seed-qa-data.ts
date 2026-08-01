@@ -37,12 +37,8 @@ async function wipe() {
         select: { id: true },
     });
     if (ads.length) {
-        await prisma.homeAd.deleteMany({
-            where: { adId: { in: ads.map((a) => a.id) } },
-        });
-        await prisma.ad.deleteMany({
-            where: { id: { in: ads.map((a) => a.id) } },
-        });
+        await prisma.homeAd.deleteMany({ where: { adId: { in: ads.map((a) => a.id) } } });
+        await prisma.ad.deleteMany({ where: { id: { in: ads.map((a) => a.id) } } });
     }
 
     // Announcements are global (no recipient), so they are matched by message.
@@ -57,9 +53,7 @@ async function wipe() {
     }
 
     await prisma.post.deleteMany({ where: { title: { startsWith: MARK } } });
-    await prisma.question.deleteMany({
-        where: { title: { startsWith: MARK } },
-    });
+    await prisma.question.deleteMany({ where: { title: { startsWith: MARK } } });
 
     if (ids.length) {
         // Cascades to their posts, questions, comments, replies, answers,
@@ -102,7 +96,7 @@ async function main() {
                     role: 'USER',
                     tierId: tier.id,
                 },
-            }),
+            })
         );
     }
     const [sara, omar, lina, youssef, hala, karim] = members;
@@ -137,16 +131,8 @@ async function main() {
 
     // ── tags ─────────────────────────────────────────────────────────────────
     const tagNames = [
-        'egypt',
-        'morocco',
-        'saudi',
-        'jordan',
-        'budgettravel',
-        'desert',
-        'redsea',
-        'roadtrip',
-        'مصر',
-        'شواطئ',
+        'egypt', 'morocco', 'saudi', 'jordan', 'budgettravel',
+        'desert', 'redsea', 'roadtrip', 'مصر', 'شواطئ',
     ];
     const tags = new Map<string, { id: string }>();
     for (const name of tagNames) {
@@ -156,129 +142,25 @@ async function main() {
                 where: { normalizedName: normalizeArabic(name) },
                 update: {},
                 create: { normalizedName: normalizeArabic(name) },
-            }),
+            })
         );
     }
 
     // ── posts: every status, varied image counts, EN + AR titles ─────────────
     const postSpecs = [
-        {
-            t: 'Diving the Red Sea on a shoestring',
-            s: 'APPROVED',
-            tags: ['egypt', 'redsea', 'budgettravel'],
-            imgs: 4,
-            author: sara,
-            likes: 42,
-            ar: false,
-        },
-        {
-            t: 'Three days across the Sahara',
-            s: 'APPROVED',
-            tags: ['morocco', 'desert'],
-            imgs: 3,
-            author: omar,
-            likes: 31,
-            ar: false,
-        },
-        {
-            t: 'رحلة إلى أسوان في الشتاء',
-            s: 'APPROVED',
-            tags: ['مصر', 'egypt'],
-            imgs: 2,
-            author: lina,
-            likes: 27,
-            ar: true,
-        },
-        {
-            t: 'AlUla after dark: a stargazing guide',
-            s: 'APPROVED',
-            tags: ['saudi', 'desert'],
-            imgs: 5,
-            author: youssef,
-            likes: 55,
-            ar: false,
-        },
-        {
-            t: 'Petra in one day — is it enough?',
-            s: 'APPROVED',
-            tags: ['jordan', 'roadtrip'],
-            imgs: 1,
-            author: hala,
-            likes: 18,
-            ar: false,
-        },
-        {
-            t: 'أجمل شواطئ البحر الأحمر',
-            s: 'APPROVED',
-            tags: ['شواطئ', 'redsea'],
-            imgs: 3,
-            author: karim,
-            likes: 39,
-            ar: true,
-        },
-        {
-            t: 'Renting a car in Morocco: what nobody tells you',
-            s: 'APPROVED',
-            tags: ['morocco', 'roadtrip'],
-            imgs: 2,
-            author: sara,
-            likes: 12,
-            ar: false,
-        },
-        {
-            t: 'Budget breakdown: two weeks in Jordan',
-            s: 'APPROVED',
-            tags: ['jordan', 'budgettravel'],
-            imgs: 2,
-            author: omar,
-            likes: 8,
-            ar: false,
-        },
-        {
-            t: 'A post with no photos at all',
-            s: 'APPROVED',
-            tags: ['roadtrip'],
-            imgs: 0,
-            author: lina,
-            likes: 3,
-            ar: false,
-        },
-        {
-            t: 'PENDING — waiting for approval',
-            s: 'PENDING',
-            tags: ['morocco'],
-            imgs: 2,
-            author: youssef,
-            likes: 0,
-            ar: false,
-        },
-        {
-            t: 'PENDING — منشور بانتظار المراجعة',
-            s: 'PENDING',
-            tags: ['مصر'],
-            imgs: 1,
-            author: hala,
-            likes: 0,
-            ar: true,
-        },
-        {
-            t: 'PENDING — third in the moderation queue',
-            s: 'PENDING',
-            tags: ['desert'],
-            imgs: 3,
-            author: karim,
-            likes: 0,
-            ar: false,
-        },
-        {
-            t: 'REJECTED — advertising disguised as a trip report',
-            s: 'REJECTED',
-            tags: ['egypt'],
-            imgs: 1,
-            author: sara,
-            likes: 0,
-            ar: false,
-        },
+        { t: 'Diving the Red Sea on a shoestring', s: 'APPROVED', tags: ['egypt', 'redsea', 'budgettravel'], imgs: 4, author: sara, likes: 42, ar: false },
+        { t: 'Three days across the Sahara', s: 'APPROVED', tags: ['morocco', 'desert'], imgs: 3, author: omar, likes: 31, ar: false },
+        { t: 'رحلة إلى أسوان في الشتاء', s: 'APPROVED', tags: ['مصر', 'egypt'], imgs: 2, author: lina, likes: 27, ar: true },
+        { t: 'AlUla after dark: a stargazing guide', s: 'APPROVED', tags: ['saudi', 'desert'], imgs: 5, author: youssef, likes: 55, ar: false },
+        { t: 'Petra in one day — is it enough?', s: 'APPROVED', tags: ['jordan', 'roadtrip'], imgs: 1, author: hala, likes: 18, ar: false },
+        { t: 'أجمل شواطئ البحر الأحمر', s: 'APPROVED', tags: ['شواطئ', 'redsea'], imgs: 3, author: karim, likes: 39, ar: true },
+        { t: 'Renting a car in Morocco: what nobody tells you', s: 'APPROVED', tags: ['morocco', 'roadtrip'], imgs: 2, author: sara, likes: 12, ar: false },
+        { t: 'Budget breakdown: two weeks in Jordan', s: 'APPROVED', tags: ['jordan', 'budgettravel'], imgs: 2, author: omar, likes: 8, ar: false },
+        { t: 'A post with no photos at all', s: 'APPROVED', tags: ['roadtrip'], imgs: 0, author: lina, likes: 3, ar: false },
+        { t: 'PENDING — waiting for approval', s: 'PENDING', tags: ['morocco'], imgs: 2, author: youssef, likes: 0, ar: false },
+        { t: 'PENDING — منشور بانتظار المراجعة', s: 'PENDING', tags: ['مصر'], imgs: 1, author: hala, likes: 0, ar: true },
+        { t: 'PENDING — third in the moderation queue', s: 'PENDING', tags: ['desert'], imgs: 3, author: karim, likes: 0, ar: false },
+        { t: 'REJECTED — advertising disguised as a trip report', s: 'REJECTED', tags: ['egypt'], imgs: 1, author: sara, likes: 0, ar: false },
     ] as const;
 
     const posts = [];
@@ -309,13 +191,10 @@ async function main() {
                         })),
                     },
                     tags: {
-                        create: spec.tags.map((name) => ({
-                            tagId: tags.get(name)!.id,
-                            name,
-                        })),
+                        create: spec.tags.map((name) => ({ tagId: tags.get(name)!.id, name })),
                     },
                 },
-            }),
+            })
         );
     }
 
@@ -325,9 +204,7 @@ async function main() {
     for (const [i, post] of approvedPosts.entries()) {
         const likers = [admin, ...members].slice(0, (i % 4) + 2);
         for (const u of likers) {
-            await prisma.postLike.create({
-                data: { postId: post.id, userId: u.id },
-            });
+            await prisma.postLike.create({ data: { postId: post.id, userId: u.id } });
         }
         await prisma.post.update({
             where: { id: post.id },
@@ -337,20 +214,12 @@ async function main() {
 
     // ── home slots: COMMUNITY strip + ADMIN (featured) strip ─────────────────
     for (const scope of ['COMMUNITY', 'ADMIN'] as const) {
-        const slice =
-            scope === 'COMMUNITY'
-                ? approvedPosts.slice(0, 4)
-                : approvedPosts.slice(4, 8);
+        const slice = scope === 'COMMUNITY' ? approvedPosts.slice(0, 4) : approvedPosts.slice(4, 8);
         for (const [i, post] of slice.entries()) {
             const position = i + 1;
-            const taken = await prisma.homePost.findFirst({
-                where: { scope, position },
-            });
-            if (taken)
-                await prisma.homePost.delete({ where: { id: taken.id } });
-            await prisma.homePost.create({
-                data: { postId: post.id, scope, position },
-            });
+            const taken = await prisma.homePost.findFirst({ where: { scope, position } });
+            if (taken) await prisma.homePost.delete({ where: { id: taken.id } });
+            await prisma.homePost.create({ data: { postId: post.id, scope, position } });
         }
     }
 
@@ -416,13 +285,8 @@ async function main() {
             },
         });
 
-        await prisma.replyLike.create({
-            data: { replyId: reply.id, userId: admin.id },
-        });
-        await prisma.comment.update({
-            where: { id: comment.id },
-            data: { repliesCount: 3 },
-        });
+        await prisma.replyLike.create({ data: { replyId: reply.id, userId: admin.id } });
+        await prisma.comment.update({ where: { id: comment.id }, data: { repliesCount: 3 } });
         await prisma.post.update({
             where: { id: post.id },
             data: { commentsCount: 2 },
@@ -438,60 +302,15 @@ async function main() {
 
     // ── questions: every status + answers, votes, nested answer replies ──────
     const questionSpecs = [
-        {
-            t: 'Best month to visit Marrakech?',
-            s: 'APPROVED',
-            tags: ['morocco'],
-            ar: false,
-        },
-        {
-            t: 'ما أفضل وقت لزيارة العلا؟',
-            s: 'APPROVED',
-            tags: ['saudi'],
-            ar: true,
-        },
-        {
-            t: 'Is the Cairo–Luxor sleeper train worth it?',
-            s: 'APPROVED',
-            tags: ['egypt', 'roadtrip'],
-            ar: false,
-        },
-        {
-            t: 'Solo female travel in Jordan — safe?',
-            s: 'APPROVED',
-            tags: ['jordan'],
-            ar: false,
-        },
-        {
-            t: 'Cheapest way from Dahab to Sharm?',
-            s: 'APPROVED',
-            tags: ['egypt', 'budgettravel'],
-            ar: false,
-        },
-        {
-            t: 'Any diving certification schools on the Red Sea?',
-            s: 'APPROVED',
-            tags: ['redsea'],
-            ar: false,
-        },
-        {
-            t: 'PENDING question awaiting review',
-            s: 'PENDING',
-            tags: ['egypt'],
-            ar: false,
-        },
-        {
-            t: 'PENDING — سؤال بانتظار المراجعة',
-            s: 'PENDING',
-            tags: ['مصر'],
-            ar: true,
-        },
-        {
-            t: 'REJECTED — duplicate of an existing question',
-            s: 'REJECTED',
-            tags: ['morocco'],
-            ar: false,
-        },
+        { t: 'Best month to visit Marrakech?', s: 'APPROVED', tags: ['morocco'], ar: false },
+        { t: 'ما أفضل وقت لزيارة العلا؟', s: 'APPROVED', tags: ['saudi'], ar: true },
+        { t: 'Is the Cairo–Luxor sleeper train worth it?', s: 'APPROVED', tags: ['egypt', 'roadtrip'], ar: false },
+        { t: 'Solo female travel in Jordan — safe?', s: 'APPROVED', tags: ['jordan'], ar: false },
+        { t: 'Cheapest way from Dahab to Sharm?', s: 'APPROVED', tags: ['egypt', 'budgettravel'], ar: false },
+        { t: 'Any diving certification schools on the Red Sea?', s: 'APPROVED', tags: ['redsea'], ar: false },
+        { t: 'PENDING question awaiting review', s: 'PENDING', tags: ['egypt'], ar: false },
+        { t: 'PENDING — سؤال بانتظار المراجعة', s: 'PENDING', tags: ['مصر'], ar: true },
+        { t: 'REJECTED — duplicate of an existing question', s: 'REJECTED', tags: ['morocco'], ar: false },
     ] as const;
 
     const questions = [];
@@ -507,17 +326,12 @@ async function main() {
                         : `<p>${MARK} Seeded question body with a little extra context so the thread view is not empty.</p>`,
                     status: spec.s,
                     rejectionReason:
-                        spec.s === 'REJECTED'
-                            ? 'Already answered in an existing thread.'
-                            : null,
+                        spec.s === 'REJECTED' ? 'Already answered in an existing thread.' : null,
                     tags: {
-                        create: spec.tags.map((name) => ({
-                            tagId: tags.get(name)!.id,
-                            name,
-                        })),
+                        create: spec.tags.map((name) => ({ tagId: tags.get(name)!.id, name })),
                     },
                 },
-            }),
+            })
         );
     }
 
@@ -543,11 +357,7 @@ async function main() {
 
             // votes (mixed up/down so the vote widget has real state)
             await prisma.answerVote.create({
-                data: {
-                    answerId: answer.id,
-                    userId: admin.id,
-                    value: a === 0 ? 1 : -1,
-                },
+                data: { answerId: answer.id, userId: admin.id, value: a === 0 ? 1 : -1 },
             });
             await prisma.answerVote.create({
                 data: { answerId: answer.id, userId: members[0].id, value: 1 },
@@ -602,9 +412,7 @@ async function main() {
 
         const likers = [admin, ...members].slice(0, (i % 3) + 2);
         for (const u of likers) {
-            await prisma.questionLike.create({
-                data: { questionId: question.id, userId: u.id },
-            });
+            await prisma.questionLike.create({ data: { questionId: question.id, userId: u.id } });
         }
         await prisma.question.update({
             where: { id: question.id },
@@ -615,14 +423,9 @@ async function main() {
     // Popular-questions strip on the home page.
     for (const [i, question] of approvedQuestions.slice(0, 5).entries()) {
         const position = i + 1;
-        const taken = await prisma.homeQuestion.findFirst({
-            where: { position },
-        });
-        if (taken)
-            await prisma.homeQuestion.delete({ where: { id: taken.id } });
-        await prisma.homeQuestion.create({
-            data: { questionId: question.id, position },
-        });
+        const taken = await prisma.homeQuestion.findFirst({ where: { position } });
+        if (taken) await prisma.homeQuestion.delete({ where: { id: taken.id } });
+        await prisma.homeQuestion.create({ data: { questionId: question.id, position } });
     }
 
     // ── contact requests: every status (+ stored contact method) ────────────
@@ -640,9 +443,7 @@ async function main() {
             receiverId: lina.id,
             status: 'ACCEPTED',
             reason: `${MARK} Loved your Aswan post — can we talk about winter routes?`,
-            contactMethod: {
-                create: { type: 'WHATSAPP', value: '+201234567890' },
-            },
+            contactMethod: { create: { type: 'WHATSAPP', value: '+201234567890' } },
         },
     });
     await prisma.contactRequest.create({
@@ -664,52 +465,19 @@ async function main() {
 
     // ── reports: one per target type we have data for ────────────────────────
     const reportSpecs = [
-        {
-            targetType: 'COMMENT' as const,
-            commentId: firstComment!.id,
-            reason: `${MARK} Spam / off-topic comment`,
-        },
-        {
-            targetType: 'COMMENT_REPLY' as const,
-            replyId: firstReply!.id,
-            reason: `${MARK} Rude reply to another member`,
-        },
-        {
-            targetType: 'COMMENT_REPLY_REPLY' as const,
-            replyId: firstNestedReply!.id,
-            reason: `${MARK} Personal attack in a nested reply`,
-        },
-        {
-            targetType: 'ANSWER' as const,
-            answerId: firstAnswer!.id,
-            reason: `${MARK} Dangerous advice in an answer`,
-        },
-        {
-            targetType: 'ANSWER_REPLY' as const,
-            answerReplyId: firstAnswerReply!.id,
-            reason: `${MARK} Misinformation in an answer reply`,
-        },
-        {
-            targetType: 'ANSWER_REPLY_REPLY' as const,
-            answerReplyId: firstNestedAnswerReply!.id,
-            reason: `${MARK} Harassment in a nested answer reply`,
-        },
-        {
-            targetType: 'CONTACT_REQUEST' as const,
-            contactRequestId: crPending.id,
-            reason: `${MARK} Harassing contact request`,
-        },
+        { targetType: 'COMMENT' as const, commentId: firstComment!.id, reason: `${MARK} Spam / off-topic comment` },
+        { targetType: 'COMMENT_REPLY' as const, replyId: firstReply!.id, reason: `${MARK} Rude reply to another member` },
+        { targetType: 'COMMENT_REPLY_REPLY' as const, replyId: firstNestedReply!.id, reason: `${MARK} Personal attack in a nested reply` },
+        { targetType: 'ANSWER' as const, answerId: firstAnswer!.id, reason: `${MARK} Dangerous advice in an answer` },
+        { targetType: 'ANSWER_REPLY' as const, answerReplyId: firstAnswerReply!.id, reason: `${MARK} Misinformation in an answer reply` },
+        { targetType: 'ANSWER_REPLY_REPLY' as const, answerReplyId: firstNestedAnswerReply!.id, reason: `${MARK} Harassment in a nested answer reply` },
+        { targetType: 'CONTACT_REQUEST' as const, contactRequestId: crPending.id, reason: `${MARK} Harassing contact request` },
     ];
     for (const [i, spec] of reportSpecs.entries()) {
         await prisma.report.create({
             data: {
                 reporterId: members[i % members.length].id,
-                status:
-                    i === reportSpecs.length - 1
-                        ? 'PENDING'
-                        : i % 3 === 0
-                          ? 'PENDING'
-                          : 'PENDING',
+                status: i === reportSpecs.length - 1 ? 'PENDING' : i % 3 === 0 ? 'PENDING' : 'PENDING',
                 ...spec,
             },
         });
@@ -717,24 +485,9 @@ async function main() {
 
     // ── ads: active / inactive / expired / future + all three home slots ─────
     const adSpecs = [
-        {
-            t: 'Desert Camp Getaway',
-            pos: 'TOP' as const,
-            active: true,
-            days: 60,
-        },
-        {
-            t: 'Red Sea Dive Packages',
-            pos: 'MIDDLE' as const,
-            active: true,
-            days: 30,
-        },
-        {
-            t: 'Atlas Mountains Trek',
-            pos: 'BOTTOM' as const,
-            active: true,
-            days: 90,
-        },
+        { t: 'Desert Camp Getaway', pos: 'TOP' as const, active: true, days: 60 },
+        { t: 'Red Sea Dive Packages', pos: 'MIDDLE' as const, active: true, days: 30 },
+        { t: 'Atlas Mountains Trek', pos: 'BOTTOM' as const, active: true, days: 90 },
         { t: 'Expired Winter Campaign', pos: null, active: true, days: -5 },
         { t: 'Paused Summer Campaign', pos: null, active: false, days: 45 },
     ];
@@ -754,19 +507,13 @@ async function main() {
                 imageHeight: 600,
                 addedById: admin.id,
                 isActive: spec.active,
-                expireAt: new Date(
-                    Date.now() + spec.days * 24 * 60 * 60 * 1000,
-                ),
+                expireAt: new Date(Date.now() + spec.days * 24 * 60 * 60 * 1000),
             },
         });
         if (spec.pos) {
-            const taken = await prisma.homeAd.findUnique({
-                where: { position: spec.pos },
-            });
+            const taken = await prisma.homeAd.findUnique({ where: { position: spec.pos } });
             if (taken) await prisma.homeAd.delete({ where: { id: taken.id } });
-            await prisma.homeAd.create({
-                data: { adId: ad.id, position: spec.pos },
-            });
+            await prisma.homeAd.create({ data: { adId: ad.id, position: spec.pos } });
         }
     }
 
@@ -777,7 +524,7 @@ async function main() {
         isRead: boolean,
         subtype: Record<string, unknown>,
         numberOfActors = 1,
-        actors: { id: string }[] = [],
+        actors: { id: string }[] = []
     ) => {
         const n = await prisma.notification.create({
             data: {
@@ -826,9 +573,7 @@ async function main() {
             titleNormalized: normalizeArabic(`${MARK} Admin's own question`),
             content: `<p>${MARK} Question owned by the admin account.</p>`,
             status: 'APPROVED',
-            tags: {
-                create: [{ tagId: tags.get('jordan')!.id, name: 'jordan' }],
-            },
+            tags: { create: [{ tagId: tags.get('jordan')!.id, name: 'jordan' }] },
         },
     });
     const adminPostComment = await prisma.comment.create({
@@ -883,62 +628,26 @@ async function main() {
             path: `${adminAnswer.id}.1.1`,
         },
     });
-    await prisma.post.update({
-        where: { id: adminPost.id },
-        data: { commentsCount: 1 },
-    });
-    await prisma.question.update({
-        where: { id: adminQuestion.id },
-        data: { answersCount: 1 },
-    });
-    await prisma.comment.update({
-        where: { id: adminPostComment.id },
-        data: { repliesCount: 2 },
-    });
-    await prisma.answer.update({
-        where: { id: adminAnswer.id },
-        data: { repliesCount: 2 },
-    });
+    await prisma.post.update({ where: { id: adminPost.id }, data: { commentsCount: 1 } });
+    await prisma.question.update({ where: { id: adminQuestion.id }, data: { answersCount: 1 } });
+    await prisma.comment.update({ where: { id: adminPostComment.id }, data: { repliesCount: 2 } });
+    await prisma.answer.update({ where: { id: adminAnswer.id }, data: { repliesCount: 2 } });
 
     // aggregated like notification (3 actors → "X and 2 others")
-    await notif(
-        'POST_LIKE',
-        sara,
-        false,
-        {
-            postLike: { create: { postId: adminPost.id } },
-        },
-        3,
-        [sara, omar, lina],
-    );
+    await notif('POST_LIKE', sara, false, {
+        postLike: { create: { postId: adminPost.id } },
+    }, 3, [sara, omar, lina]);
 
-    await notif(
-        'QUESTION_LIKE',
-        omar,
-        false,
-        {
-            questionLike: { create: { questionId: adminQuestion.id } },
-        },
-        2,
-        [omar, hala],
-    );
+    await notif('QUESTION_LIKE', omar, false, {
+        questionLike: { create: { questionId: adminQuestion.id } },
+    }, 2, [omar, hala]);
 
     await notif('COMMENT', sara, false, {
-        postComment: {
-            create: {
-                postId: adminPost.id,
-                lastCommentId: adminPostComment.id,
-            },
-        },
+        postComment: { create: { postId: adminPost.id, lastCommentId: adminPostComment.id } },
     });
 
     await notif('ANSWER', youssef, true, {
-        questionAnswer: {
-            create: {
-                questionId: adminQuestion.id,
-                lastAnswerId: adminAnswer.id,
-            },
-        },
+        questionAnswer: { create: { questionId: adminQuestion.id, lastAnswerId: adminAnswer.id } },
     });
 
     await notif('COMMENT_REPLY', omar, false, {
@@ -993,8 +702,7 @@ async function main() {
         postRejection: {
             create: {
                 postTitle: `${MARK} A post that was rejected`,
-                rejectionReason:
-                    'Promotional content — please remove the affiliate links.',
+                rejectionReason: 'Promotional content — please remove the affiliate links.',
             },
         },
     });
@@ -1010,10 +718,7 @@ async function main() {
 
     await notif('TIER_UPGRADE', admin, false, {
         tierUpgradeNotification: {
-            create: {
-                oldTierId: memberTiers[0].id,
-                newTierId: memberTiers[1].id,
-            },
+            create: { oldTierId: memberTiers[0].id, newTierId: memberTiers[1].id },
         },
     });
 
@@ -1035,10 +740,7 @@ async function main() {
         // mark the oldest one as already read by the admin
         if (i === announcements.length - 1 && n.adminNotification) {
             await prisma.adminNotificationReadState.create({
-                data: {
-                    userId: admin.id,
-                    adminNotificationId: n.adminNotification.id,
-                },
+                data: { userId: admin.id, adminNotificationId: n.adminNotification.id },
             });
         }
     }
@@ -1046,24 +748,9 @@ async function main() {
     // ── audit log entries ───────────────────────────────────────────────────
     await prisma.auditLog.createMany({
         data: [
-            {
-                adminId: admin.id,
-                action: 'APPROVE_POST',
-                entityType: 'Post',
-                entityId: approvedPosts[0].id,
-            },
-            {
-                adminId: admin.id,
-                action: 'BAN_USER',
-                entityType: 'User',
-                entityId: bannedUser.id,
-            },
-            {
-                adminId: admin.id,
-                action: 'CREATE_AD',
-                entityType: 'Ad',
-                entityId: 'seed-qa/ad-0',
-            },
+            { adminId: admin.id, action: 'APPROVE_POST', entityType: 'Post', entityId: approvedPosts[0].id },
+            { adminId: admin.id, action: 'BAN_USER', entityType: 'User', entityId: bannedUser.id },
+            { adminId: admin.id, action: 'CREATE_AD', entityType: 'Ad', entityId: 'seed-qa/ad-0' },
         ],
     });
 
@@ -1073,13 +760,9 @@ async function main() {
         bans: await prisma.ban.count(),
         posts: await prisma.post.count(),
         pendingPosts: await prisma.post.count({ where: { status: 'PENDING' } }),
-        rejectedPosts: await prisma.post.count({
-            where: { status: 'REJECTED' },
-        }),
+        rejectedPosts: await prisma.post.count({ where: { status: 'REJECTED' } }),
         questions: await prisma.question.count(),
-        pendingQuestions: await prisma.question.count({
-            where: { status: 'PENDING' },
-        }),
+        pendingQuestions: await prisma.question.count({ where: { status: 'PENDING' } }),
         answers: await prisma.answer.count(),
         comments: await prisma.comment.count(),
         replies: await prisma.reply.count(),
@@ -1098,9 +781,7 @@ async function main() {
     console.log('\nQA members (one per tier):');
     for (const m of members) {
         const tier = tiers.find((t) => t.id === m.tierId);
-        console.log(
-            `  ${m.name.padEnd(28)} tier=${tier?.name ?? '?'}  /profile/${m.id}`,
-        );
+        console.log(`  ${m.name.padEnd(28)} tier=${tier?.name ?? '?'}  /profile/${m.id}`);
     }
     console.log(`  ${moderator.name.padEnd(28)} MODERATOR`);
     console.log(`  ${bannedUser.name.padEnd(28)} BANNED`);
@@ -1108,9 +789,7 @@ async function main() {
     console.log(`  post:      /post/${approvedPosts[0].id}`);
     console.log(`  question:  /q&a/${approvedQuestions[0].id}`);
     console.log(`  admin post (has your notifications): /post/${adminPost.id}`);
-    console.log(
-        '\nTrending tags are cached for 15 min — restart the backend to see them immediately.',
-    );
+    console.log('\nTrending tags are cached for 15 min — restart the backend to see them immediately.');
 }
 
 main()
