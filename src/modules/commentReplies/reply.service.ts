@@ -26,24 +26,29 @@ class ReplyService {
                 throw new Error('COMMENT_NOT_FOUND');
             }
 
-            const siblings = await tx.reply.findMany({
+            const lastRootReply = await tx.reply.findFirst({
                 where: {
                     commentId,
                     parentReplyId: null,
+                },
+                orderBy: {
+                    path: 'desc',
                 },
                 select: {
                     path: true,
                 },
             });
 
-            let segment = replyUtils.nextSegment();
+            let segment = '1';
 
             if (lastRootReply) {
                 const parts = lastRootReply.path.split('.');
-                segment = replyUtils.nextSegment(parts.at(-1));
+                const lastSegment = parts[parts.length - 1];
+
+                segment = replyUtils.nextSegment(lastSegment);
             }
 
-            const path = `${comment.id}.${segment}`;
+            const path = commentId + '.' + segment;
 
             const reply = await tx.reply.create({
                 data: {
@@ -143,23 +148,28 @@ class ReplyService {
                 throw new Error('MAX_DEPTH_REACHED');
             }
 
-            const children = await tx.reply.findMany({
+            const lastChild = await tx.reply.findFirst({
                 where: {
                     parentReplyId: replyId,
+                },
+                orderBy: {
+                    path: 'desc',
                 },
                 select: {
                     path: true,
                 },
             });
 
-            let segment = replyUtils.nextSegment();
+            let segment = '1';
 
             if (lastChild) {
                 const parts = lastChild.path.split('.');
-                segment = replyUtils.nextSegment(parts.at(-1));
+                const lastSegment = parts[parts.length - 1];
+
+                segment = replyUtils.nextSegment(lastSegment);
             }
 
-            const path = `${parent.path}.${segment}`;
+            const path = parent.path + '.' + segment;
 
             const reply = await tx.reply.create({
                 data: {
@@ -260,17 +270,9 @@ class ReplyService {
 
             const { count } = await tx.reply.deleteMany({
                 where: {
-                    commentId: reply.commentId,
-                    OR: [
-                        {
-                            id: reply.id,
-                        },
-                        {
-                            path: {
-                                startsWith: `${reply.path}.`,
-                            },
-                        },
-                    ],
+                    path: {
+                        startsWith: reply.path,
+                    },
                 },
             });
 

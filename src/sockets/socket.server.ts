@@ -1,13 +1,15 @@
 import { Server as SocketIOServer } from 'socket.io';
 import type { Server as HTTPServer } from 'http';
 import { socketAuth } from './socket.auth.js';
-import { corsOptions } from './../config/cors.js';
 
 let io: SocketIOServer;
 
 export function initSocket(server: HTTPServer) {
     io = new SocketIOServer(server, {
-        cors: corsOptions,
+        cors: {
+            origin: process.env.CLIENT_URL || '*',
+            credentials: true,
+        },
     });
 
     io.use(socketAuth);

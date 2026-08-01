@@ -25,24 +25,29 @@ class ReplyService {
                 throw new Error('answer_NOT_FOUND');
             }
 
-            const siblings = await tx.answerReply.findMany({
+            const lastRootReply = await tx.answerReply.findFirst({
                 where: {
                     answerId,
                     parentReplyId: null,
+                },
+                orderBy: {
+                    path: 'desc',
                 },
                 select: {
                     path: true,
                 },
             });
 
-            let segment = replyUtils.nextSegment();
+            let segment = '1';
 
             if (lastRootReply) {
                 const parts = lastRootReply.path.split('.');
-                segment = replyUtils.nextSegment(parts.at(-1));
+                const lastSegment = parts[parts.length - 1];
+
+                segment = replyUtils.nextSegment(lastSegment);
             }
 
-            const path = `${answer.id}.${segment}`;
+            const path = answer.id + '.' + segment;
 
             const reply = await tx.answerReply.create({
                 data: {
@@ -142,23 +147,28 @@ class ReplyService {
                 throw new Error('MAX_DEPTH_REACHED');
             }
 
-            const children = await tx.answerReply.findMany({
+            const lastChild = await tx.answerReply.findFirst({
                 where: {
                     parentReplyId: replyId,
+                },
+                orderBy: {
+                    path: 'desc',
                 },
                 select: {
                     path: true,
                 },
             });
 
-            let segment = replyUtils.nextSegment();
+            let segment = '1';
 
             if (lastChild) {
                 const parts = lastChild.path.split('.');
-                segment = replyUtils.nextSegment(parts.at(-1));
+                const lastSegment = parts[parts.length - 1];
+
+                segment = replyUtils.nextSegment(lastSegment);
             }
 
-            const path = `${parent.path}.${segment}`;
+            const path = parent.path + '.' + segment;
 
             const reply = await tx.answerReply.create({
                 data: {
@@ -259,17 +269,9 @@ class ReplyService {
 
             const { count } = await tx.answerReply.deleteMany({
                 where: {
-                    answerId: reply.answerId,
-                    OR: [
-                        {
-                            id: reply.id,
-                        },
-                        {
-                            path: {
-                                startsWith: `${reply.path}.`,
-                            },
-                        },
-                    ],
+                    path: {
+                        startsWith: reply.path,
+                    },
                 },
             });
 

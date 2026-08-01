@@ -145,7 +145,13 @@ class AdService {
                 throw new Error('AD_NOT_FOUND');
             }
 
-            const updated = await prisma.ad.update({
+            const publicIds = ad.imagePublicId ? [ad.imagePublicId] : [];
+
+            if (publicIds.length > 0) {
+                await imageUtils.deleteImages(publicIds);
+            }
+
+            return await prisma.ad.update({
                 where: { id },
                 data: {
                     title,
@@ -167,18 +173,6 @@ class AdService {
                     imageOriginalName: uploads[0]?.originalName,
                 },
             });
-
-            // Only destroy the previous asset once a replacement was actually
-            // uploaded and successfully persisted.
-            if (
-                uploads[0]?.publicId &&
-                ad.imagePublicId &&
-                ad.imagePublicId !== uploads[0].publicId
-            ) {
-                await imageUtils.deleteImages([ad.imagePublicId]);
-            }
-
-            return updated;
         } catch (error: any) {
             if (error.code === 'P2002') {
                 throw new Error('AD_ALREADY_EXISTS');

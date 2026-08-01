@@ -10,11 +10,7 @@ const likeValidation: {
     ],
     validateVoteOrUnVoteAnswer: [
         param('answerId').isUUID().withMessage('Invalid answer ID format'),
-        body('value')
-            .isInt()
-            .withMessage('Value must be an integer')
-            .isIn([1, -1])
-            .withMessage('Value must be either upvote or downvote'),
+        body('value').isIn([1, -1]).withMessage('Value must be either upvote or downvote'),
     ],
     validateLikeOrUnlikeReply: [
         param('replyId').isUUID().withMessage('Invalid reply ID format'),

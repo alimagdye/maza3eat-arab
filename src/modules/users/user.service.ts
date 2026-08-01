@@ -55,36 +55,16 @@ class UserService {
         authUserId: string | null = null,
     ) {
         const take = 10;
-        const isOwner = authUserId === userId;
-
         const posts = await prisma.post.findMany({
-            where: {
-                authorId: userId,
-                ...(isOwner ? {} : { status: 'APPROVED' as const }),
-            },
+            where: { authorId: userId },
             orderBy: { createdAt: 'desc' },
-            take: take + 1,
+            take,
             ...(cursor && {
                 skip: 1,
                 cursor: { id: cursor },
             }),
             select: {
                 id: true,
-                author: {
-                    select: {
-                        id: true,
-                        name: true,
-                        avatar: true,
-                        tier: {
-                            select: {
-                                id: true,
-                                name: true,
-                                badgeColor: true,
-                            },
-                        },
-                    },
-                },
-                status: true,
                 title: true,
                 content: true,
 
@@ -114,15 +94,14 @@ class UserService {
             },
         });
 
-        const hasMore = posts.length > take;
-        if (hasMore) posts.pop();
+        const isOwner = authUserId === userId;
+
+        const hasMore = posts.length === take;
 
         const nextCursor = hasMore ? posts[posts.length - 1].id : null;
 
         const data = posts.map((post) => ({
             id: post.id,
-            author: post.author,
-            status: post.status,
             title: post.title,
             content: post.content.slice(0, 450),
 
@@ -140,7 +119,7 @@ class UserService {
             },
 
             permissions: {
-                canDelete: isOwner && post.status !== 'PENDING',
+                canDelete: isOwner,
             },
         }));
 
@@ -157,15 +136,10 @@ class UserService {
         authUserId: string | null = null,
     ) {
         const take = 10;
-        const isOwner = authUserId === userId;
-
         const questions = await prisma.question.findMany({
-            where: {
-                authorId: userId,
-                ...(isOwner ? {} : { status: 'APPROVED' as const }),
-            },
+            where: { authorId: userId },
             orderBy: { createdAt: 'desc' },
-            take: take + 1,
+            take,
             ...(cursor && {
                 skip: 1,
                 cursor: { id: cursor },
@@ -173,17 +147,6 @@ class UserService {
 
             select: {
                 id: true,
-                status: true,
-                author: {
-                    select: {
-                        id: true,
-                        name: true,
-                        avatar: true,
-                        tier: {
-                            select: { id: true, name: true, badgeColor: true },
-                        },
-                    },
-                },
                 title: true,
                 content: true,
 
@@ -198,17 +161,16 @@ class UserService {
             },
         });
 
-        const hasMore = questions.length > take;
-        if (hasMore) questions.pop();
+        const isOwner = authUserId === userId;
+
+        const hasMore = questions.length === take;
 
         const nextCursor = hasMore ? questions[questions.length - 1].id : null;
 
         const data = questions.map((question) => ({
             id: question.id,
-            author: question.author,
             title: question.title,
             content: question.content.slice(0, 280),
-            status: question.status,
 
             likesCount: question.likesCount,
             answersCount: question.answersCount,
@@ -217,7 +179,7 @@ class UserService {
 
             tags: question.tags,
             permissions: {
-                canDelete: isOwner && question.status !== 'PENDING',
+                canDelete: isOwner,
             },
         }));
 

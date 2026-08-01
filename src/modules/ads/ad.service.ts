@@ -100,15 +100,7 @@ class AdService {
     // HOME ADS LOGIC
     // ==========================================
     private async refreshHomeAdsCache() {
-        const nowDate = new Date();
-
         const rawHomeAds = await prisma.homeAd.findMany({
-            where: {
-                ad: {
-                    isActive: true,
-                    expireAt: { gt: nowDate },
-                },
-            },
             orderBy: { position: 'asc' },
             include: { ad: true },
         });
@@ -126,18 +118,9 @@ class AdService {
             },
         }));
 
-        // 1 Hour TTL + up to 5 minutes of jitter, capped by the soonest expiry
-        // so an ad is never served past its expireAt
+        // 1 Hour TTL + up to 5 minutes of jitter
         const jitter = Math.floor(Math.random() * 1000 * 60 * 5);
-        const soonestExpiry = rawHomeAds.reduce(
-            (soonest, homeAd) =>
-                Math.min(soonest, homeAd.ad.expireAt.getTime()),
-            Infinity,
-        );
-        this.homeAdsCacheExpiresAt = Math.min(
-            Date.now() + this.HOME_ADS_TTL + jitter,
-            soonestExpiry,
-        );
+        this.homeAdsCacheExpiresAt = Date.now() + this.HOME_ADS_TTL + jitter;
     }
 
     public invalidateHomeAdsCache() {
