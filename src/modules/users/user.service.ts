@@ -65,6 +65,21 @@ class UserService {
             }),
             select: {
                 id: true,
+                author: {
+                    select: {
+                        id: true,
+                        name: true,
+                        avatar: true,
+                        tier: {
+                            select: {
+                                id: true,
+                                name: true,
+                                badgeColor: true,
+                            },
+                        },
+                    },
+                },
+                status: true,
                 title: true,
                 content: true,
 
@@ -102,6 +117,8 @@ class UserService {
 
         const data = posts.map((post) => ({
             id: post.id,
+            author: post.author,
+            status: post.status,
             title: post.title,
             content: post.content.slice(0, 450),
 
@@ -119,7 +136,7 @@ class UserService {
             },
 
             permissions: {
-                canDelete: isOwner,
+                canDelete: isOwner && post.status !== 'PENDING',
             },
         }));
 
@@ -147,6 +164,17 @@ class UserService {
 
             select: {
                 id: true,
+                status: true,
+                author: {
+                    select: {
+                        id: true,
+                        name: true,
+                        avatar: true,
+                        tier: {
+                            select: { id: true, name: true, badgeColor: true },
+                        },
+                    },
+                },
                 title: true,
                 content: true,
 
@@ -169,8 +197,10 @@ class UserService {
 
         const data = questions.map((question) => ({
             id: question.id,
+            author: question.author,
             title: question.title,
             content: question.content.slice(0, 280),
+            status: question.status,
 
             likesCount: question.likesCount,
             answersCount: question.answersCount,
@@ -179,7 +209,7 @@ class UserService {
 
             tags: question.tags,
             permissions: {
-                canDelete: isOwner,
+                canDelete: isOwner && question.status !== 'PENDING',
             },
         }));
 
