@@ -365,7 +365,7 @@ class PostService {
                 }),
             },
         });
-        if (!post) {
+        if (!post || (post.status === 'PENDING' && role === 'USER')) {
             throw new Error('POST_NOT_FOUND');
         }
         const likedByMe = userId && post.likes ? post.likes.length > 0 : false;

@@ -171,7 +171,7 @@ class QuestionService {
         let orderBy: any;
         if (sort === 'popular') {
             orderBy = [
-                { commentsCount: 'desc' as const },
+                { answersCount: 'desc' as const },
                 { id: 'desc' as const },
             ];
         } else if (sort === 'latest') {
@@ -298,7 +298,7 @@ class QuestionService {
                 }),
             },
         });
-        if (!question) {
+        if (!question || (question.status === 'PENDING' && role === 'USER')) {
             throw new Error('question_NOT_FOUND');
         }
 
