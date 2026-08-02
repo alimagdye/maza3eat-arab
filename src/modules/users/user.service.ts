@@ -56,7 +56,10 @@ class UserService {
     ) {
         const take = 10;
         const posts = await prisma.post.findMany({
-            where: { authorId: userId },
+            where: {
+                authorId: userId,
+                ...(authUserId === userId ? {} : { status: 'APPROVED' }),
+            },
             orderBy: { createdAt: 'desc' },
             take,
             ...(cursor && {
@@ -120,6 +123,7 @@ class UserService {
             author: post.author,
             title: post.title,
             content: post.content.slice(0, 450),
+            status: post.status,
 
             likesCount: post.likesCount,
             commentsCount: post.commentsCount,
@@ -153,7 +157,10 @@ class UserService {
     ) {
         const take = 10;
         const questions = await prisma.question.findMany({
-            where: { authorId: userId },
+            where: {
+                authorId: userId,
+                ...(authUserId === userId ? {} : { status: 'APPROVED' }),
+            },
             orderBy: { createdAt: 'desc' },
             take,
             ...(cursor && {
