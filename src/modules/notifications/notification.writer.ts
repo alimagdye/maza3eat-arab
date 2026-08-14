@@ -66,7 +66,7 @@ class NotificationWriter {
     async createCommentOrAnswerNotification(
         params: CreateCommentNotificationParams,
     ) {
-        const { recipientId, actorId, type } = params;
+        const { recipientId, actorId, type, createdAt } = params;
 
         if (recipientId === actorId) return;
 
@@ -75,8 +75,7 @@ class NotificationWriter {
                 ? `POST_COMMENT:${params.postId}`
                 : `QUESTION_ANSWER:${params.questionId}`;
 
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        const now = new Date();
+        const oneHourAgo = new Date(createdAt.getTime() - 60 * 60 * 1000);
 
         let shouldEmit = false;
 
@@ -116,7 +115,7 @@ class NotificationWriter {
                     data: {
                         lastActorId: actorId,
                         isRead: false,
-                        lastActivityAt: now,
+                        lastActivityAt: createdAt,
                         ...(existingActor
                             ? {}
                             : {
@@ -166,7 +165,8 @@ class NotificationWriter {
                     recipientId,
                     groupKey,
                     lastActorId: actorId,
-                    lastActivityAt: now,
+                    lastActivityAt: createdAt,
+                    createdAt,
 
                     ...(type === 'COMMENT'
                         ? {
@@ -205,7 +205,7 @@ class NotificationWriter {
     async createPostOrQuestionLikeNotification(
         params: CreatePostOrQuestionLikeNotificationParams,
     ) {
-        const { recipientId, actorId, type } = params;
+        const { recipientId, actorId, type, createdAt } = params;
 
         // prevent self notification
         if (recipientId === actorId) return;
@@ -215,8 +215,7 @@ class NotificationWriter {
                 ? `POST_LIKE:${params.postId}`
                 : `QUESTION_LIKE:${params.questionId}`;
 
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        const now = new Date();
+        const oneHourAgo = new Date(createdAt.getTime() - 60 * 60 * 1000);
 
         let shouldEmit = false;
 
@@ -263,7 +262,7 @@ class NotificationWriter {
                     data: {
                         lastActorId: actorId,
                         isRead: false,
-                        lastActivityAt: now,
+                        lastActivityAt: createdAt,
 
                         ...(existingActor
                             ? {}
@@ -296,7 +295,8 @@ class NotificationWriter {
                     recipientId,
                     groupKey,
                     lastActorId: actorId,
-                    lastActivityAt: now,
+                    lastActivityAt: createdAt,
+                    createdAt,
 
                     ...(type === 'POST_LIKE'
                         ? {

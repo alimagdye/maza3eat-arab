@@ -188,7 +188,9 @@ async function cleanupTestData(targetId: string, actorId: string) {
 
     const notificationIds = [
         ...actorNotifications.map((notification) => notification.id),
-        ...postApprovalNotifications.map((notification) => notification.notificationId),
+        ...postApprovalNotifications.map(
+            (notification) => notification.notificationId,
+        ),
         ...questionApprovalNotifications.map(
             (notification) => notification.notificationId,
         ),
@@ -242,7 +244,9 @@ async function cleanupTestData(targetId: string, actorId: string) {
         await prisma.user.delete({ where: { id: actorId } });
     }
 
-    console.log('Removed previous test notifications, contact requests, and fixture content.');
+    console.log(
+        'Removed previous test notifications, contact requests, and fixture content.',
+    );
 }
 
 async function cleanupTestDataWithoutActor(targetId: string) {
@@ -349,7 +353,8 @@ async function createFixtures(targetId: string, actorId: string) {
             authorId: actorId,
             title: `${TEST_MARKER} Actor question`,
             titleNormalized: `${TEST_MARKER} actor question`.toLowerCase(),
-            content: 'Question where the target user leaves answers and replies.',
+            content:
+                'Question where the target user leaves answers and replies.',
             status: 'APPROVED',
         },
     });
@@ -482,6 +487,7 @@ async function seedNotifications(
         type: 'COMMENT',
         postId: fixtures.targetPost.id,
         commentId: fixtures.actorCommentOnTargetPost.id,
+        createdAt: new Date(),
     });
     created.push('COMMENT');
 
@@ -491,6 +497,7 @@ async function seedNotifications(
         type: 'ANSWER',
         questionId: fixtures.targetQuestion.id,
         answerId: fixtures.actorAnswerOnTargetQuestion.id,
+        createdAt: new Date(),
     });
     created.push('ANSWER');
 
@@ -539,6 +546,7 @@ async function seedNotifications(
         actorId,
         type: 'POST_LIKE',
         postId: fixtures.targetPost.id,
+        createdAt: new Date(),
     });
     created.push('POST_LIKE');
 
@@ -547,6 +555,7 @@ async function seedNotifications(
         actorId,
         type: 'QUESTION_LIKE',
         questionId: fixtures.targetQuestion.id,
+        createdAt: new Date(),
     });
     created.push('QUESTION_LIKE');
 
@@ -669,15 +678,21 @@ async function main() {
     }
     console.log('');
     console.log('Contact requests:');
-    console.log(`  - RECEIVED:PENDING  id=${contactRequests.incomingPendingId}`);
+    console.log(
+        `  - RECEIVED:PENDING  id=${contactRequests.incomingPendingId}`,
+    );
     console.log(
         `  - SENT:ACCEPTED       id=${contactRequests.outgoingAcceptedId}`,
     );
     console.log('');
     console.log(`Unread notifications for target: ${unread}`);
     console.log('');
-    console.log('Open the app while signed in as this user and refresh notifications/contact requests.');
-    console.log('Re-run with --fresh to reset, or --cleanup to remove test data.');
+    console.log(
+        'Open the app while signed in as this user and refresh notifications/contact requests.',
+    );
+    console.log(
+        'Re-run with --fresh to reset, or --cleanup to remove test data.',
+    );
 }
 
 main()
