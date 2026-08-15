@@ -1218,6 +1218,7 @@ class NotificationReader {
                     isRead: true,
                     createdAt: true,
                     lastActivityAt: true,
+                    lastActorId: true,
                     recipientId: true,
                     questionLike: {
                         select: {
@@ -1234,22 +1235,68 @@ class NotificationReader {
             const wasUnread = !notification.isRead;
 
             if (!notification?.questionLike) {
-                if (wasUnread) {
-                    await tx.notification.update({
-                        where: {
-                            id: notificationId,
-                        },
-                        data: {
-                            isRead: true,
-                        },
-                    });
-                }
+                await tx.notification.delete({
+                    where: { id: notificationId },
+                });
 
                 return {
                     recipientId: notification.recipientId,
                     shouldEmit: wasUnread,
                     notification: null,
                 };
+            }
+
+            const { questionId } = notification.questionLike;
+
+            // Recover actors whose likes were deleted.
+            const remainingLikes = await tx.questionLike.findMany({
+                where: {
+                    questionId,
+                    createdAt: {
+                        gte: notification.createdAt,
+                        lte: notification.lastActivityAt,
+                    },
+                },
+                select: {
+                    userId: true,
+                },
+                distinct: ['userId'],
+                orderBy: [{ createdAt: 'desc' }, { userId: 'desc' }],
+            });
+
+            if (remainingLikes.length === 0) {
+                await tx.notification.delete({
+                    where: { id: notificationId },
+                });
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            const remainingActorIds = remainingLikes.map((like) => like.userId);
+
+            const deletedActors = await tx.notificationActor.deleteMany({
+                where: {
+                    notificationId,
+                    actorId: {
+                        notIn: remainingActorIds,
+                    },
+                },
+            });
+
+            if (deletedActors.count > 0) {
+                await tx.notification.update({
+                    where: { id: notificationId },
+                    data: {
+                        lastActorId: remainingLikes[0].userId,
+                        numberOfActors: {
+                            decrement: deletedActors.count,
+                        },
+                    },
+                });
             }
 
             if (wasUnread) {
