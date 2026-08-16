@@ -6,7 +6,7 @@ const answerRateLimiter = {
         'Too many requests from this user, please try again later.',
     ),
     createAnswerLimiter: createLimiter(
-        25,
+        45,
         'Too many answers created from this user, please try again later.',
     ),
     deleteAnswerLimiter: createLimiter(
