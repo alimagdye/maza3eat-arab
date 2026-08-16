@@ -54,6 +54,7 @@ class AnswerService {
             questionId,
             answerId: result.answer.id,
             type: 'ANSWER',
+            createdAt: result.answer.createdAt,
         });
 
         return result.answer;

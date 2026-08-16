@@ -5,17 +5,22 @@ class LikeService {
     private notificationService = NotificationService;
     async likePost(userId: string, postId: string) {
         const result = await prisma.$transaction(async (tx) => {
-            await tx.postLike.create({
+            const postLike = await tx.postLike.create({
                 data: { userId, postId },
+                select: {
+                    createdAt: true,
+                },
             });
 
-            return await tx.post.update({
+            const post = await tx.post.update({
                 where: { id: postId },
                 data: {
                     likesCount: { increment: 1 },
                 },
                 select: { authorId: true },
             });
+
+            return { authorId: post.authorId, createdAt: postLike.createdAt };
         });
 
         await this.notificationService.createPostOrQuestionLikeNotification({
@@ -23,6 +28,7 @@ class LikeService {
             actorId: userId,
             postId,
             type: 'POST_LIKE',
+            createdAt: result.createdAt,
         });
     }
 

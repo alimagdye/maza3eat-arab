@@ -54,6 +54,7 @@ class CommentService {
             postId,
             commentId: result.comment.id,
             type: 'COMMENT',
+            createdAt: result.comment.createdAt,
         });
         return result.comment;
     }

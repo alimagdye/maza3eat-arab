@@ -830,12 +830,9 @@ class NotificationReader {
 
             // case: post deleted
             if (!notification.postComment) {
-                if (wasUnread) {
-                    await tx.notification.update({
-                        where: { id: notificationId },
-                        data: { isRead: true },
-                    });
-                }
+                await tx.notification.delete({
+                    where: { id: notificationId },
+                });
 
                 return {
                     recipientId: notification.recipientId,
@@ -858,9 +855,7 @@ class NotificationReader {
                             lte: notification.lastActivityAt,
                         },
                     },
-                    orderBy: {
-                        createdAt: 'desc',
-                    },
+                    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
                     select: {
                         postId: true,
                         id: true,
@@ -878,12 +873,9 @@ class NotificationReader {
 
                 // case: all comments deleted
                 if (!comment) {
-                    if (wasUnread) {
-                        await tx.notification.update({
-                            where: { id: notificationId },
-                            data: { isRead: true },
-                        });
-                    }
+                    await tx.notification.delete({
+                        where: { id: notificationId },
+                    });
 
                     return {
                         recipientId: notification.recipientId,
@@ -892,11 +884,48 @@ class NotificationReader {
                     };
                 }
 
-                // persist repaired pointer
-                await tx.postCommentNotification.update({
-                    where: { notificationId },
+                // persist repaired pointer and recover deleted actors
+                const remainingComments = await tx.comment.findMany({
+                    where: {
+                        postId,
+                        createdAt: {
+                            gte: notification.createdAt,
+                            lte: notification.lastActivityAt,
+                        },
+                    },
+                    select: {
+                        authorId: true,
+                    },
+                    distinct: ['authorId'],
+                });
+
+                const remainingActorIds = remainingComments.map(
+                    (comment) => comment.authorId,
+                );
+
+                const deletedActors = await tx.notificationActor.deleteMany({
+                    where: {
+                        notificationId,
+                        actorId: {
+                            notIn: remainingActorIds,
+                        },
+                    },
+                });
+
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
                     data: {
-                        lastCommentId: comment.id,
+                        lastActorId: comment.author.id,
+                        numberOfActors: {
+                            decrement: deletedActors.count,
+                        },
+                        postComment: {
+                            update: {
+                                lastCommentId: comment.id,
+                            },
+                        },
                     },
                 });
             }
@@ -1014,16 +1043,9 @@ class NotificationReader {
             const wasUnread = !notification.isRead;
 
             if (!notification.questionAnswer) {
-                if (wasUnread) {
-                    await tx.notification.update({
-                        where: {
-                            id: notificationId,
-                        },
-                        data: {
-                            isRead: true,
-                        },
-                    });
-                }
+                await tx.notification.delete({
+                    where: { id: notificationId },
+                });
 
                 return {
                     recipientId: notification.recipientId,
@@ -1046,7 +1068,7 @@ class NotificationReader {
                             lte: notification.lastActivityAt,
                         },
                     },
-                    orderBy: { createdAt: 'desc' },
+                    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
                     select: {
                         questionId: true,
                         id: true,
@@ -1063,16 +1085,9 @@ class NotificationReader {
                 });
 
                 if (!answer) {
-                    if (wasUnread) {
-                        await tx.notification.update({
-                            where: {
-                                id: notificationId,
-                            },
-                            data: {
-                                isRead: true,
-                            },
-                        });
-                    }
+                    await tx.notification.delete({
+                        where: { id: notificationId },
+                    });
 
                     return {
                         recipientId: notification.recipientId,
@@ -1081,11 +1096,48 @@ class NotificationReader {
                     };
                 }
 
-                // persist repaired pointer
-                await tx.questionAnswerNotification.update({
-                    where: { notificationId },
+                // persist repaired pointer and recover deleted actors
+                const remainingAnswers = await tx.answer.findMany({
+                    where: {
+                        questionId,
+                        createdAt: {
+                            gte: notification.createdAt,
+                            lte: notification.lastActivityAt,
+                        },
+                    },
+                    select: {
+                        authorId: true,
+                    },
+                    distinct: ['authorId'],
+                });
+
+                const remainingActorIds = remainingAnswers.map(
+                    (answer) => answer.authorId,
+                );
+
+                const deletedActors = await tx.notificationActor.deleteMany({
+                    where: {
+                        notificationId,
+                        actorId: {
+                            notIn: remainingActorIds,
+                        },
+                    },
+                });
+
+                await tx.notification.update({
+                    where: {
+                        id: notificationId,
+                    },
                     data: {
-                        lastAnswerId: answer.id,
+                        lastActorId: answer.author.id,
+                        numberOfActors: {
+                            decrement: deletedActors.count,
+                        },
+                        questionAnswer: {
+                            update: {
+                                lastAnswerId: answer.id,
+                            },
+                        },
                     },
                 });
             }
@@ -1182,22 +1234,68 @@ class NotificationReader {
             const wasUnread = !notification.isRead;
 
             if (!notification?.questionLike) {
-                if (wasUnread) {
-                    await tx.notification.update({
-                        where: {
-                            id: notificationId,
-                        },
-                        data: {
-                            isRead: true,
-                        },
-                    });
-                }
+                await tx.notification.delete({
+                    where: { id: notificationId },
+                });
 
                 return {
                     recipientId: notification.recipientId,
                     shouldEmit: wasUnread,
                     notification: null,
                 };
+            }
+
+            const { questionId } = notification.questionLike;
+
+            // Recover actors whose likes were deleted.
+            const remainingLikes = await tx.questionLike.findMany({
+                where: {
+                    questionId,
+                    createdAt: {
+                        gte: notification.createdAt,
+                        lte: notification.lastActivityAt,
+                    },
+                },
+                select: {
+                    userId: true,
+                },
+                distinct: ['userId'],
+                orderBy: [{ createdAt: 'desc' }, { userId: 'desc' }],
+            });
+
+            if (remainingLikes.length === 0) {
+                await tx.notification.delete({
+                    where: { id: notificationId },
+                });
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            const remainingActorIds = remainingLikes.map((like) => like.userId);
+
+            const deletedActors = await tx.notificationActor.deleteMany({
+                where: {
+                    notificationId,
+                    actorId: {
+                        notIn: remainingActorIds,
+                    },
+                },
+            });
+
+            if (deletedActors.count > 0) {
+                await tx.notification.update({
+                    where: { id: notificationId },
+                    data: {
+                        lastActorId: remainingLikes[0].userId,
+                        numberOfActors: {
+                            decrement: deletedActors.count,
+                        },
+                    },
+                });
             }
 
             if (wasUnread) {
@@ -1261,6 +1359,7 @@ class NotificationReader {
                     },
                 },
             });
+
             if (!notification) {
                 return null;
             }
@@ -1268,22 +1367,68 @@ class NotificationReader {
             const wasUnread = !notification.isRead;
 
             if (!notification?.postLike) {
-                if (wasUnread) {
-                    await tx.notification.update({
-                        where: {
-                            id: notificationId,
-                        },
-                        data: {
-                            isRead: true,
-                        },
-                    });
-                }
+                await tx.notification.delete({
+                    where: { id: notificationId },
+                });
 
                 return {
                     recipientId: notification.recipientId,
                     shouldEmit: wasUnread,
                     notification: null,
                 };
+            }
+
+            const { postId } = notification.postLike;
+
+            // Recover actors whose likes were deleted.
+            const remainingLikes = await tx.postLike.findMany({
+                where: {
+                    postId,
+                    createdAt: {
+                        gte: notification.createdAt,
+                        lte: notification.lastActivityAt,
+                    },
+                },
+                select: {
+                    userId: true,
+                },
+                distinct: ['userId'],
+                orderBy: [{ createdAt: 'desc' }, { userId: 'desc' }],
+            });
+
+            if (remainingLikes.length === 0) {
+                await tx.notification.delete({
+                    where: { id: notificationId },
+                });
+
+                return {
+                    recipientId: notification.recipientId,
+                    shouldEmit: wasUnread,
+                    notification: null,
+                };
+            }
+
+            const remainingActorIds = remainingLikes.map((like) => like.userId);
+
+            const deletedActors = await tx.notificationActor.deleteMany({
+                where: {
+                    notificationId,
+                    actorId: {
+                        notIn: remainingActorIds,
+                    },
+                },
+            });
+
+            if (deletedActors.count > 0) {
+                await tx.notification.update({
+                    where: { id: notificationId },
+                    data: {
+                        lastActorId: remainingLikes[0].userId,
+                        numberOfActors: {
+                            decrement: deletedActors.count,
+                        },
+                    },
+                });
             }
 
             if (wasUnread) {

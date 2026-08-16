@@ -6,15 +6,15 @@ export default {
         'Too many requests. Please try again later.',
     ),
     replyToCommentLimiter: createLimiter(
-        25,
+        45,
         'Too many reply creation requests. Please try again later.',
     ),
     replyToReplyLimiter: createLimiter(
-        20,
+        40,
         'Too many reply creation requests. Please try again later.',
     ),
     deleteReplyLimiter: createLimiter(
-        10,
+        50,
         'Too many reply deletion requests. Please try again later.',
     ),
     getMoreRepliesLimiter: createLimiter(

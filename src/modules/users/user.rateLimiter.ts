@@ -5,7 +5,7 @@ const userRateLimiter = {
         350,
         'Too many requests. Please try again later.',
     ),
-    meLimiter: createLimiter(100, 'Too many requests. Please try again later.'),
+    meLimiter: createLimiter(200, 'Too many requests. Please try again later.'),
     userPostsOrQuestionsLimiter: createLimiter(
         300,
         'Too many requests. Please try again later.',

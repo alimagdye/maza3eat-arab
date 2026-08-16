@@ -49,6 +49,7 @@ export type CreateCommentNotificationParams =
 
           postId: string;
           commentId: string;
+          createdAt: Date;
       }
     | {
           recipientId: string;
@@ -58,6 +59,7 @@ export type CreateCommentNotificationParams =
 
           questionId: string;
           answerId: string;
+          createdAt: Date;
       };
 
 export type CreatePostOrQuestionLikeNotificationParams =
@@ -68,6 +70,7 @@ export type CreatePostOrQuestionLikeNotificationParams =
           type: 'POST_LIKE';
 
           postId: string;
+          createdAt: Date;
       }
     | {
           recipientId: string;
@@ -76,6 +79,7 @@ export type CreatePostOrQuestionLikeNotificationParams =
           type: 'QUESTION_LIKE';
 
           questionId: string;
+          createdAt: Date;
       };
 
 export type CreatePostOrQuestionApprovalNotificationParams =
