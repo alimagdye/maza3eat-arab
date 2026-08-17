@@ -17,7 +17,7 @@ const postValidation: {
             .isString()
             .withMessage('content must be string')
             .trim()
-            .isLength({ min: 3, max: 5000 })
+            .isLength({ min: 3, max: 10000 })
             .withMessage('bad content length'),
         body('tags')
             .toArray()
