@@ -259,6 +259,7 @@ class PostService {
 
                 author: {
                     select: {
+                        id: true,
                         name: true,
                         avatar: true,
                         tier: {
@@ -295,6 +296,7 @@ class PostService {
             },
 
             author: {
+                id: post.author.id,
                 name: post.author.name,
                 avatar: post.author.avatar,
 

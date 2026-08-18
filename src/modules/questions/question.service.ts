@@ -206,6 +206,7 @@ class QuestionService {
 
                 author: {
                     select: {
+                        id: true,
                         name: true,
                         avatar: true,
                         tier: {
@@ -236,6 +237,7 @@ class QuestionService {
             tags: question.tags,
 
             author: {
+                id: question.author.id,
                 name: question.author.name,
                 avatar: question.author.avatar,
 
