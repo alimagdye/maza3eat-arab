@@ -196,31 +196,6 @@ class AuthService {
         });
     }
 
-    async getUserById(userId: string) {
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-                tier: {
-                    select: {
-                        name: true,
-                        badgeColor: true,
-                        description: true,
-                    },
-                },
-            },
-        });
-
-        if (!user) {
-            return null;
-        }
-
-        return user;
-    }
-
     private hashToken(token: string) {
         return crypto.createHash('sha256').update(token).digest('hex');
     }

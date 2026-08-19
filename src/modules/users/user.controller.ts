@@ -6,7 +6,7 @@ class UserController {
 
     me = async (req: Request, res: Response) => {
         try {
-            const user = await this.userService.getUserById(req.user.sub, req.user.sub);
+            const user = await this.userService.getMyProfile(req.user.sub);
 
             if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
