@@ -50,8 +50,16 @@ class UserService {
                 },
                 _count: {
                     select: {
-                        posts: true,
-                        questions: true,
+                        posts: {
+                            where: {
+                                status: 'APPROVED',
+                            },
+                        },
+                        questions: {
+                            where: {
+                                status: 'APPROVED',
+                            },
+                        },
                     },
                 },
             },
