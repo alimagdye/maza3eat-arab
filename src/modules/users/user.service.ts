@@ -1,6 +1,37 @@
 import { prisma } from '../../lib/client.js';
 
 class UserService {
+    async getMyProfile(userId: string) {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                name: true,
+                avatar: true,
+                role: true,
+                tier: {
+                    select: {
+                        id: true,
+                        name: true,
+                        badgeColor: true,
+                        description: true,
+                    },
+                },
+            },
+        });
+
+        if (!user) {
+            return null;
+        }
+
+        return {
+            id: user.id,
+            name: user.name,
+            avatar: user.avatar,
+            role: user.role,
+            tier: user.tier,
+        };
+    }
     async getUserById(userId: string, authUserId: string | null = null) {
         const user = await prisma.user.findUnique({
             where: { id: userId },
