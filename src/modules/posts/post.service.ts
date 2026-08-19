@@ -404,7 +404,7 @@ class PostService {
                 id: postId,
                 ...(role === 'ADMIN' || role === 'MODERATOR'
                     ? {}
-                    : { authorId: userId }),
+                    : { authorId: userId, status: 'APPROVED' }),
             },
             select: {
                 id: true,
