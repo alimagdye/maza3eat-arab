@@ -339,7 +339,7 @@ class QuestionService {
                 id: questionId,
                 ...(role === 'ADMIN' || role === 'MODERATOR'
                     ? {}
-                    : { authorId: userId }),
+                    : { authorId: userId, status: 'APPROVED' }),
             },
             select: {
                 id: true,
