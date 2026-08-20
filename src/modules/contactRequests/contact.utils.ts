@@ -90,7 +90,7 @@ class ContactUtils {
                 return /^\+\d{10,15}$/.test(value);
 
             case 'FACEBOOK':
-                return /^(https?:\/\/)?(www\.)?facebook\.com\/[A-Za-z0-9.]+\/?$/.test(
+                return /^(https?:\/\/)?(www\.)?facebook\.com\/[A-Za-z0-9.]+\/?(\?[A-Za-z0-9_=&-]+)?$/.test(
                     value,
                 );
 
