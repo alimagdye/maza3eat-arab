@@ -92,6 +92,7 @@ class UserService {
         userId: string,
         cursor: string | null = null,
         authUserId: string | null = null,
+        role: 'ADMIN' | 'USER' | 'MODERATOR' | null = null,
     ) {
         const take = 10;
         const posts = await prisma.post.findMany({
@@ -178,7 +179,10 @@ class UserService {
             },
 
             permissions: {
-                canDelete: isOwner && post.status !== 'PENDING',
+                canDelete:
+                    (isOwner && post.status !== 'PENDING') ||
+                    role === 'ADMIN' ||
+                    role === 'MODERATOR',
             },
         }));
 
@@ -193,6 +197,7 @@ class UserService {
         userId: string,
         cursor: string | null,
         authUserId: string | null = null,
+        role: 'ADMIN' | 'USER' | 'MODERATOR' | null = null,
     ) {
         const take = 10;
         const questions = await prisma.question.findMany({
@@ -258,7 +263,10 @@ class UserService {
 
             tags: question.tags,
             permissions: {
-                canDelete: isOwner && question.status !== 'PENDING',
+                canDelete:
+                    (isOwner && question.status !== 'PENDING') ||
+                    role === 'ADMIN' ||
+                    role === 'MODERATOR',
             },
         }));
 
