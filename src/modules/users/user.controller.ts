@@ -48,12 +48,14 @@ class UserController {
         const userId = req.params.userId as string;
         const cursor = req.query.cursor as string | null;
         const authUserId = req.user ? req.user.sub : null;
+        const role = req.user ? req.user.role : null;
 
         try {
             const result = await this.userService.getUserPosts(
                 userId,
                 cursor,
                 authUserId,
+                role,
             );
 
             return res.status(200).json({ status: 'success', data: result });
@@ -71,12 +73,14 @@ class UserController {
         const userId = req.params.userId as string;
         const cursor = req.query.cursor as string | null;
         const authUserId = req.user ? req.user.sub : null;
+        const role = req.user ? req.user.role : null;
 
         try {
             const results = await this.userService.getUserQuestions(
                 userId,
                 cursor,
                 authUserId,
+                role,
             );
 
             return res.status(200).json({ status: 'success', data: results });

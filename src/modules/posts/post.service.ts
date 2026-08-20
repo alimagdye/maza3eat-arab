@@ -350,6 +350,7 @@ class PostService {
                         id: true,
                         name: true,
                         avatar: true,
+                        role: true,
                         tier: {
                             select: {
                                 name: true,
@@ -377,6 +378,11 @@ class PostService {
                 ? { status: post.status }
                 : {}),
             title: post?.title,
+            scope:
+                post?.author.role === 'ADMIN' ||
+                post?.author.role === 'MODERATOR'
+                    ? 'admin'
+                    : 'community',
             content: post?.content,
             publishDate: post?.createdAt,
             author: {
