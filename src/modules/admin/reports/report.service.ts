@@ -66,7 +66,19 @@ class ReportService {
                 });
 
                 data.postId = comment.postId;
-                data.comment = comment;
+                data.comment = {
+                    id: comment.id,
+                    postId: comment.postId,
+                    content: comment.content,
+                    likesCount: comment.likesCount,
+                    createdAt: comment.createdAt,
+                    repliesCount: comment.repliesCount,
+                    author: comment.author,
+                    permissions: {
+                        canDelete: true,
+                        canReport: true,
+                    },
+                };
 
                 break;
             case 'ANSWER':
@@ -85,7 +97,19 @@ class ReportService {
                 });
 
                 data.questionId = answer.questionId;
-                data.answer = answer;
+                data.answer = {
+                    id: answer.id,
+                    questionId: answer.questionId,
+                    content: answer.content,
+                    totalVoteValue: answer.totalVoteValue,
+                    createdAt: answer.createdAt,
+                    repliesCount: answer.repliesCount,
+                    author: answer.author,
+                    permissions: {
+                        canDelete: true,
+                        canReport: true,
+                    },
+                };
 
                 break;
             case 'COMMENT_REPLY':
@@ -130,8 +154,24 @@ class ReportService {
                     createdAt: reply.createdAt,
                     author: reply.author,
                     hasReplies: reply.replies.length > 0,
+                    permissions: {
+                        canDelete: true,
+                        canReport: true,
+                    },
                 };
-                data.comment = reply.comment;
+                data.comment = {
+                    id: reply.comment.id,
+                    content: reply.comment.content,
+                    likesCount: reply.comment.likesCount,
+                    createdAt: reply.comment.createdAt,
+                    repliesCount: reply.comment.repliesCount,
+                    author: reply.comment.author,
+                    postId: reply.comment.postId,
+                    permissions: {
+                        canDelete: true,
+                        canReport: true,
+                    },
+                };
                 data.postId = reply.comment.postId;
 
                 break;
@@ -177,8 +217,24 @@ class ReportService {
                     createdAt: answerReply.createdAt,
                     author: answerReply.author,
                     hasReplies: answerReply.answerReplies.length > 0,
+                    permissions: {
+                        canDelete: true,
+                        canReport: true,
+                    },
                 };
-                data.answer = answerReply.answer;
+                data.answer = {
+                    id: answerReply.answer.id,
+                    questionId: answerReply.answer.questionId,
+                    content: answerReply.answer.content,
+                    totalVoteValue: answerReply.answer.totalVoteValue,
+                    createdAt: answerReply.answer.createdAt,
+                    repliesCount: answerReply.answer.repliesCount,
+                    author: answerReply.answer.author,
+                    permissions: {
+                        canDelete: true,
+                        canReport: true,
+                    },
+                };
                 data.questionId = answerReply.answer.questionId;
 
                 break;
@@ -230,6 +286,10 @@ class ReportService {
                     createdAt: answerReplyReply.createdAt,
                     author: answerReplyReply.author,
                     hasReplies: answerReplyReply.answerReplies.length > 0,
+                    permissions: {
+                        canDelete: true,
+                        canReport: true,
+                    },
                 };
                 data.parentReply = {
                     id: answerReplyReply.parentReply?.id,
@@ -240,6 +300,10 @@ class ReportService {
                     createdAt: answerReplyReply.parentReply?.createdAt,
                     author: answerReplyReply.parentReply?.author,
                     hasReplies: true,
+                    permissions: {
+                        canDelete: true,
+                        canReport: true,
+                    },
                 };
                 data.questionId =
                     answerReplyReply.parentReply?.answer.questionId;
@@ -293,6 +357,10 @@ class ReportService {
                     createdAt: commentReplyReply.createdAt,
                     author: commentReplyReply.author,
                     hasReplies: commentReplyReply.replies.length > 0,
+                    permissions: {
+                        canDelete: true,
+                        canReport: true,
+                    },
                 };
                 data.parentReply = {
                     id: commentReplyReply.parentReply?.id,
@@ -303,6 +371,10 @@ class ReportService {
                     createdAt: commentReplyReply.parentReply?.createdAt,
                     author: commentReplyReply.parentReply?.author,
                     hasReplies: true,
+                    permissions: {
+                        canDelete: true,
+                        canReport: true,
+                    },
                 };
                 data.postId = commentReplyReply.parentReply?.comment.postId;
 
