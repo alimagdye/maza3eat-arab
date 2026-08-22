@@ -4,7 +4,7 @@ import {
 } from '../../middlewares/rateLimit/rateLimiter.factory.js';
 
 const contactRequestRateLimiter = {
-    preAuthLimiter: createIPLimiter(200, 'Too many requests'),
+    preAuthLimiter: createIPLimiter(350, 'Too many requests'),
     createContactRequestLimiter: createLimiter(
         10,
         'Too many contact request creation requests. Please try again later.',
@@ -14,11 +14,11 @@ const contactRequestRateLimiter = {
         'Too many contact request response requests. Please try again later.',
     ),
     getContactRequestByIdLimiter: createLimiter(
-        120,
+        310,
         'Too many requests. Please try again later.',
     ),
     getContactRequestsLimiter: createLimiter(
-        100,
+        300,
         'Too many requests. Please try again later.',
     ),
 };
